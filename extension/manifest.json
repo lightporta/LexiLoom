@@ -4,19 +4,50 @@
   "name": "__MSG_extName__",
   "short_name": "LexiLoom",
   "description": "__MSG_extDescription__",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "minimum_chrome_version": "140",
-  "permissions": ["storage"],
-  "host_permissions": ["https://api.wiktapi.dev/*", "https://api.dictionaryapi.dev/*", "http://127.0.0.1/*"],
-  "background": { "service_worker": "background/worker.js", "type": "module" },
-  "action": { "default_popup": "popup.html", "default_title": "__MSG_extActionTitle__" },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://api.wiktapi.dev/*",
+    "https://api.dictionaryapi.dev/*",
+    "https://www.moedict.tw/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background/worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "__MSG_extActionTitle__"
+  },
   "options_page": "options.html",
-  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "content_scripts": [{
-    "matches": ["http://*/*", "https://*/*"],
-    "js": ["shared/core.js", "shared/i18n.js", "shared/present.js", "ui/panel-theme.js", "content.js"],
-    "run_at": "document_idle",
-    "all_frames": false
-  }],
-  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'" }
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "shared/locale.js",
+        "shared/core.js",
+        "shared/i18n.js",
+        "shared/present.js",
+        "ui/panel-theme.js",
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  }
 }

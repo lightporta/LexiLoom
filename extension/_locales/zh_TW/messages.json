@@ -1,0 +1,533 @@
+{
+  "extName": {
+    "message": "LexiLoom · 語織"
+  },
+  "extDescription": {
+    "message": "雙擊查詞，讓釋義沿著閱讀展開。相連詞卡、獨立展開、音標與例句。"
+  },
+  "extActionTitle": {
+    "message": "LexiLoom · 語織"
+  },
+  "brandCn": {
+    "message": "語織"
+  },
+  "popupHeading": {
+    "message": "讓好奇，自然展開。"
+  },
+  "popupLead": {
+    "message": "雙擊英文或中文字詞，就地查看釋義。"
+  },
+  "popupEnable": {
+    "message": "啟用網頁查詞"
+  },
+  "popupProviderPrefix": {
+    "message": "詞典來源："
+  },
+  "popupProviderLoading": {
+    "message": "正在讀取…"
+  },
+  "popupTry": {
+    "message": "打開交互體驗頁 ↗"
+  },
+  "popupOptions": {
+    "message": "詞典與連接設置"
+  },
+  "versionWords": {
+    "message": "字詞查詢"
+  },
+  "popupReadFailed": {
+    "message": "設置讀取失敗，請重新打開插件。"
+  },
+  "popupEnabledOn": {
+    "message": "已啟用；已打開的網頁也會生效。"
+  },
+  "popupEnabledOff": {
+    "message": "已暫停；下次選詞時生效。"
+  },
+  "popupProviderUnset": {
+    "message": "未選擇"
+  },
+  "providerSmart": {
+    "message": "中文優先 · 自動回退"
+  },
+  "providerWiktionary": {
+    "message": "中文維基詞典 · WiktApi"
+  },
+  "providerFree": {
+    "message": "Free Dictionary · 英英"
+  },
+  "providerDemo": {
+    "message": "本地雙語演示"
+  },
+  "providerOxford": {
+    "message": "Oxford Dictionaries"
+  },
+  "providerCambridge": {
+    "message": "Cambridge Dictionary"
+  },
+  "optionsTitle": {
+    "message": "詞典設置 · LexiLoom"
+  },
+  "optionsTryLink": {
+    "message": "體驗詞卡 ↗"
+  },
+  "optionsEyebrow": {
+    "message": "A dictionary, your way"
+  },
+  "optionsHeading": {
+    "message": "選擇你的詞典。"
+  },
+  "optionsLead": {
+    "message": "先讓一個單詞變得清晰，再把閱讀織成自己的語言。"
+  },
+  "optionsSectionLookup": {
+    "message": "網頁查詞"
+  },
+  "optionsToggleLookup": {
+    "message": "雙擊與劃詞查詞"
+  },
+  "optionsProviderLabel": {
+    "message": "英文查詞來源"
+  },
+  "optionSmart": {
+    "message": "中文優先 · 維基詞典 + 英英回退，無需密鑰"
+  },
+  "optionWiktionary": {
+    "message": "中文維基詞典 · WiktApi，無需密鑰"
+  },
+  "optionFree": {
+    "message": "Free Dictionary · 在線英英，無需密鑰"
+  },
+  "optionDemo": {
+    "message": "本地雙語演示 · 自編詞條"
+  },
+  "optionOxford": {
+    "message": "Oxford Dictionaries API · 需官方授權"
+  },
+  "optionCambridge": {
+    "message": "Cambridge Dictionary API · 需官方授權"
+  },
+  "noteSmart": {
+    "message": "後臺優先通過 WiktApi 查詢中文維基詞典中的英文詞條，缺詞或不可用時回退 Free Dictionary 英英釋義。無需密鑰和本地服務。維基詞條可能使用繁體中文，詞卡會註明真實來源與回退原因。"
+  },
+  "noteWiktionary": {
+    "message": "通過 api.wiktapi.dev 查詢中文維基詞典，直接顯示中文釋義、詞條中已有的例句、音標和音頻。無需密鑰。開放協作詞典的覆蓋範圍和內容質量因詞條而異，部分釋義為繁體；不是牛津或劍橋數據。"
+  },
+  "noteFree": {
+    "message": "直接查詢 Free Dictionary API，無需申請密鑰。提供英文釋義、音標及接口中已有的例句，不包含自動中文翻譯。請求會發送到 api.dictionaryapi.dev。"
+  },
+  "noteDemo": {
+    "message": "完全離線的交互演示，包含 12 個自編中英詞條，例如 serendipity、luminous、ephemeral、apple。未收錄的詞會提示切換在線詞典。"
+  },
+  "noteOxford": {
+    "message": "通過本地服務連接 Oxford Dictionaries API。需要 App ID 和 App Key；英語試用僅支持 a 開頭詞，且有調用額度。釋義語言由授權數據集決定。"
+  },
+  "noteCambridge": {
+    "message": "通過本地服務連接 Cambridge 官方 API。需要審批授權、accessKey 以及賬號可用的詞典代碼。若授權包含英漢詞典，可以顯示其中文釋義。"
+  },
+  "bridgeHeading": {
+    "message": "連接本地詞典服務"
+  },
+  "bridgeLead": {
+    "message": "官方詞典密鑰只填在項目的 bridge/.env 文件。這裡填寫服務連接口令，來自同一文件中的 BRIDGE_TOKEN。"
+  },
+  "bridgeTokenLabel": {
+    "message": "本地服務連接口令"
+  },
+  "bridgeTokenHelp": {
+    "message": "連接固定地址 http://127.0.0.1:47821。口令只存儲在本機插件中，不會同步到雲端。"
+  },
+  "bridgeCheck": {
+    "message": "檢查已保存的連接"
+  },
+  "bridgeList": {
+    "message": "讀取劍橋詞典列表"
+  },
+  "bridgeDocs": {
+    "message": "啟動方式和申請說明請看項目 README。劍橋可用的詞典代碼需通過服務的 /v1/dictionaries 查詢，雙語能力取決於賬號授權的數據集。"
+  },
+  "save": {
+    "message": "保存設置"
+  },
+  "restore": {
+    "message": "恢復默認"
+  },
+  "guideHeading": {
+    "message": "從一個詞開始"
+  },
+  "guide1": {
+    "message": "雙擊英文或中文字詞，出現釋義卡；也可以拖選後點擊查詞。"
+  },
+  "guide2": {
+    "message": "點擊詞卡展開釋義、音標、用法和例句；再次點擊詞頭收起。"
+  },
+  "guide3": {
+    "message": "拖選多個單詞後，點擊出現的“查詞”按鈕，生成相連的詞卡。"
+  },
+  "guide4": {
+    "message": "按住 Ctrl / ⌘ 再雙擊其他單詞可以追加，最多 8 個。"
+  },
+  "guide5": {
+    "message": "點擊退出或按 Esc 關閉。Chrome 內部頁、商店頁、內置 PDF 閱讀器不支持注入。"
+  },
+  "settingsFooter": {
+    "message": "只在主動查詞時發送選中的詞。不上傳整頁內容，不保存查詞歷史。中文釋義來自中文維基詞典，部分為繁體；英英回退和各來源會在詞卡中註明。演示詞庫為自編內容。"
+  },
+  "readFailed": {
+    "message": "設置讀取失敗，請刷新後重試。"
+  },
+  "tokenShort": {
+    "message": "請填寫至少 24 個字符的本地服務連接口令。"
+  },
+  "saved": {
+    "message": "已保存。下次查詞使用新設置，無需刷新網頁。"
+  },
+  "saveFailed": {
+    "message": "未能保存設置，請重試。"
+  },
+  "restored": {
+    "message": "已恢復表單默認值；點擊“保存設置”後生效。"
+  },
+  "bridgeChecking": {
+    "message": "正在檢查…"
+  },
+  "bridgeConnected": {
+    "message": "本地服務已連接。牛津：$1；劍橋：$2。配置狀態不代表官方授權已驗證，請實際查詞確認。"
+  },
+  "configured": {
+    "message": "已配置"
+  },
+  "notConfigured": {
+    "message": "未配置"
+  },
+  "bridgeCheckFailed": {
+    "message": "連接檢查失敗，請重試。"
+  },
+  "bridgeListing": {
+    "message": "正在讀取賬號已授權的詞典…"
+  },
+  "bridgeListHint": {
+    "message": "將所需 dictionaryCode 填入 bridge/.env 的 CAMBRIDGE_DICTIONARY_CODE，然後重啟服務："
+  },
+  "bridgeListEmpty": {
+    "message": "賬號未返回可用詞典，請檢查授權。"
+  },
+  "bridgeListFailed": {
+    "message": "讀取失敗，請檢查本地服務和劍橋授權。"
+  },
+  "tryTitle": {
+    "message": "閱讀體驗 · LexiLoom"
+  },
+  "tryPill": {
+    "message": "INTERACTIVE READING ROOM · 01"
+  },
+  "tryEyebrow": {
+    "message": "Follow a word. Find a world."
+  },
+  "tryHeroLead": {
+    "message": "閱讀不必在陌生的詞前停下。雙擊下面的單詞，讓意思在眼前輕輕展開。此頁使用自編雙語演示詞庫，專注體驗詞卡交互。"
+  },
+  "tryCaption": {
+    "message": "把不認識的單詞，織成理解世界的線索。試著拖選 “luminous ephemeral”，也可以直接點擊下方按鈕。"
+  },
+  "trySingle": {
+    "message": "體驗一個詞 ↗"
+  },
+  "tryMulti": {
+    "message": "體驗相連詞卡 ↗"
+  },
+  "tryMissing": {
+    "message": "查看無結果狀態"
+  },
+  "step1Title": {
+    "message": "雙擊 · 發現"
+  },
+  "step1Body": {
+    "message": "選中一個詞，緊湊詞卡隨即出現。"
+  },
+  "step2Title": {
+    "message": "輕點 · 展開"
+  },
+  "step2Body": {
+    "message": "意思、音標和例句，在一張卡中徐徐鋪開。"
+  },
+  "step3Title": {
+    "message": "相連 · 各自探索"
+  },
+  "step3Body": {
+    "message": "拖選多個詞，再點查詞。Ctrl / ⌘ ＋雙擊可追加。"
+  },
+  "step4Title": {
+    "message": "隨時回到閱讀"
+  },
+  "step4Body": {
+    "message": "點擊空白處、退出按鈕或按 Esc 關閉。"
+  },
+  "tryFooterDemo": {
+    "message": "英文示例為自編內容，中文詞條在線查詢"
+  },
+  "tryFooterBrand": {
+    "message": "LEXILOOM · WEAVE WORDS INTO UNDERSTANDING"
+  },
+  "previewOptionsHint": {
+    "message": "這是本地交互預覽。加載 extension 文件夾到 Chrome 後，可在插件中打開設置。"
+  },
+  "cardAria": {
+    "message": "語織字詞釋義"
+  },
+  "closeLookup": {
+    "message": "退出查詞（Esc）"
+  },
+  "loading": {
+    "message": "正在翻開詞典"
+  },
+  "querying": {
+    "message": "查詢中"
+  },
+  "tapExpand": {
+    "message": "點擊展開"
+  },
+  "tapCollapse": {
+    "message": "點擊收起"
+  },
+  "removeWord": {
+    "message": "移除 $1"
+  },
+  "footerHelp": {
+    "message": "雙擊新詞替換 · Ctrl / ⌘ + 雙擊追加"
+  },
+  "lookupCount": {
+    "message": "查找選中的 $1 個字詞"
+  },
+  "launcherCount": {
+    "message": "查 $1 詞"
+  },
+  "maxWords": {
+    "message": "一次最多查看 $1 個不同字詞。"
+  },
+  "sectionPronunciation": {
+    "message": "PRONUNCIATION · 發音"
+  },
+  "sectionMeaning": {
+    "message": "MEANING & USAGE · 釋義與用法"
+  },
+  "audioDictionary": {
+    "message": "詞典音訊"
+  },
+  "audioSystem": {
+    "message": "系統朗讀"
+  },
+  "audioUnavailable": {
+    "message": "音訊暫時無法播放，請使用系統朗讀"
+  },
+  "speechUnsupported": {
+    "message": "此瀏覽器暫不支持系統朗讀"
+  },
+  "speechBusy": {
+    "message": "網頁正在朗讀，請稍後重試"
+  },
+  "usagePrefix": {
+    "message": "用法 · $1"
+  },
+  "synonymsPrefix": {
+    "message": "近義詞 · $1"
+  },
+  "noExamples": {
+    "message": "當前詞源未提供例句。"
+  },
+  "openSource": {
+    "message": "$1 · 打開來源 ↗"
+  },
+  "dictionaryFallback": {
+    "message": "詞典"
+  },
+  "sourceDemoNote": {
+    "message": "本地示例內容，用於體驗交互；非牛津或劍橋詞典數據。"
+  },
+  "sourceFreeNote": {
+    "message": "Free Dictionary API · 英英釋義；中文釋義可選擇“中文優先”或中文維基詞典。"
+  },
+  "sourceLine": {
+    "message": "詞條來源：$1"
+  },
+  "sourceLicense": {
+    "message": "來源許可"
+  },
+  "audioLicense": {
+    "message": "$1 · 文件與許可 ↗"
+  },
+  "audioFallback": {
+    "message": "音訊"
+  },
+  "notFound": {
+    "message": "無法找到該單詞"
+  },
+  "notFoundHint": {
+    "message": "請檢查拼寫，或在詞典設置中切換其他來源。"
+  },
+  "errorRetryHint": {
+    "message": "請檢查網絡連接與詞典設置後重試。"
+  },
+  "retry": {
+    "message": "重試"
+  },
+  "openSettings": {
+    "message": "詞典設置 ↗"
+  },
+  "foundPrompt": {
+    "message": "詞條已找到，點擊查看詳情"
+  },
+  "brandFallback": {
+    "message": "語織"
+  },
+  "noticeWiktMissing": {
+    "message": "中文詞源暫無此詞，已顯示英英釋義。"
+  },
+  "noticeWiktDown": {
+    "message": "中文詞源暫不可用，已顯示英英釋義。"
+  },
+  "noticeUnconfirmed": {
+    "message": "英英詞源也未收錄；中文詞源暫不可用，暫時無法確認此詞。"
+  },
+  "noticeBothDown": {
+    "message": "中文和英英詞源均暫不可用，請稍後重試。"
+  },
+  "noticeFreeDown": {
+    "message": "中文詞源暫無此詞，英英詞源暫不可用。"
+  },
+  "noticeNoEnglish": {
+    "message": "這份結果沒有可顯示的英文釋義。"
+  },
+  "source_wiktionary": {
+    "message": "中文維基詞典 · WiktApi"
+  },
+  "source_free": {
+    "message": "Free Dictionary API"
+  },
+  "source_demo": {
+    "message": "本地演示 · 自編詞條"
+  },
+  "source_oxford": {
+    "message": "Oxford Dictionaries API"
+  },
+  "source_cambridge": {
+    "message": "Cambridge Dictionary"
+  },
+  "source_smart": {
+    "message": "中文優先"
+  },
+  "error_disabled": {
+    "message": "查詞已暫停。"
+  },
+  "error_not_configured": {
+    "message": "請先在設置中連接本地詞典服務。"
+  },
+  "error_bridge_auth": {
+    "message": "本地服務連接口令不正確，請檢查設置。"
+  },
+  "error_busy": {
+    "message": "正在查詢其他單詞，請稍後重試。"
+  },
+  "error_bridge_busy": {
+    "message": "本地詞典服務繁忙，請稍後重試。"
+  },
+  "error_bridge_unavailable": {
+    "message": "無法連接本地詞典服務，請確認服務正在運行。"
+  },
+  "error_invalid_word": {
+    "message": "請選擇 48 個字符以內的英文單詞或中文字詞。"
+  },
+  "error_unsupported_format": {
+    "message": "詞典返回的數據格式暫不支持，請打開原詞典查看。"
+  },
+  "error_authentication": {
+    "message": "詞典授權失敗，請檢查 API 憑據及詞典訪問權限。"
+  },
+  "error_rate_limit": {
+    "message": "詞典請求額度已用盡或過於頻繁，請稍後重試。"
+  },
+  "error_upstream": {
+    "message": "詞典服務暫時不可用，請稍後重試。"
+  },
+  "error_invalid_dictionary": {
+    "message": "劍橋詞典代碼不存在或當前密鑰未獲授權，請讀取可用詞典列表並檢查配置。"
+  },
+  "error_integration": {
+    "message": "劍橋 API 請求路徑無效，請檢查接入配置。"
+  },
+  "error_timeout": {
+    "message": "詞典請求超時，請重試。"
+  },
+  "error_network": {
+    "message": "無法連接詞典，請檢查網絡後重試。"
+  },
+  "error_demo_miss": {
+    "message": "演示詞庫未收錄此詞，請切換在線詞典。"
+  },
+  "error_connection_failed": {
+    "message": "詞典連接失敗；如剛更新插件，請刷新網頁後重試。"
+  },
+  "error_generic": {
+    "message": "詞典暫時無法連接，請重試"
+  },
+  "error_missing_token": {
+    "message": "請先保存連接口令。"
+  },
+  "error_http_status": {
+    "message": "連接失敗（HTTP $1），請檢查服務和口令。"
+  },
+  "error_bridge_down": {
+    "message": "未連接。請先啟動本地詞典服務。"
+  },
+  "chineseRegionLabel": {
+    "message": "中文詞條地區"
+  },
+  "regionAuto": {
+    "message": "跟隨界面語言"
+  },
+  "regionCN": {
+    "message": "中國大陸 · 簡體／漢語拼音"
+  },
+  "regionHK": {
+    "message": "香港 · 繁體／粵拼"
+  },
+  "regionTW": {
+    "message": "臺灣 · 繁體／注音"
+  },
+  "regionResolved": {
+    "message": "當前使用：$1"
+  },
+  "regionHelp": {
+    "message": "部分瀏覽器只提供「繁體中文」，無法區分香港和臺灣時，可在這裡指定。"
+  },
+  "sectionChineseMeaning": {
+    "message": "中文釋義"
+  },
+  "sectionEnglishMeaning": {
+    "message": "ENGLISH · 英文解釋"
+  },
+  "notFoundChinese": {
+    "message": "無法找到該字詞"
+  },
+  "tryChineseHeading": {
+    "message": "中文詞條"
+  },
+  "tryChineseLead": {
+    "message": "下面使用在線詞典，可直接選詞查看各地區讀音、釋義和例句。"
+  },
+  "tryChineseSample": {
+    "message": "你好 學習 語言"
+  },
+  "tryChineseButton": {
+    "message": "試試中文詞卡 ↗"
+  },
+  "source_chinese": {
+    "message": "中文字詞典"
+  },
+  "source_moedict": {
+    "message": "教育部《重編國語辭典修訂本》· 萌典"
+  },
+  "source_wiktionary_chinese": {
+    "message": "維基詞典 · 中文字詞"
+  }
+}

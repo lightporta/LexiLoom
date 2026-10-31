@@ -7,7 +7,7 @@ test('selection normalizes apostrophes, deduplicates and preserves hyphenated wo
   assert.deepEqual(parseSelection('Hello, HELLO! mother-in-law isn’t.').words, ['hello', 'mother-in-law', "isn't"]);
 });
 test('ignores unsupported full tokens and rejects large selections', () => {
-  assert.deepEqual(parseSelection('中文 abc123 user@example.com https://example.com').words, []);
+  assert.deepEqual(parseSelection('abc123 user@example.com https://example.com').words, []);
   assert.equal(parseSelection('a'.repeat(1001)).reason, 'too-long');
   assert.equal(normalizeWord('<script>'), '');
   assert.equal(normalizeWord('a'.repeat(49)), '');
@@ -17,7 +17,7 @@ test('limits chains to 8 different words and reports truncation', () => {
   assert.equal(parsed.words.length, 8); assert.equal(parsed.truncated, true);
 });
 test('public settings never disclose the local bridge token', () => {
-  assert.deepEqual(publicSettings({ enabled: false, provider: 'oxford', bridgeToken: 'secret' }), { enabled: false, provider: 'oxford' });
+  assert.deepEqual(publicSettings({ enabled: false, provider: 'oxford', bridgeToken: 'secret' }), { enabled: false, provider: 'oxford', chineseRegion: 'auto' });
   assert.equal(publicSettings({ provider: 'https://evil.example' }).provider, 'smart');
 });
 test('accepts only HTTPS links without credentials', () => {

@@ -1,12 +1,14 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "platform": "darwin",
   "node": "v24.16.0",
   "browser": "156.0.8078.4",
   "checks": [
-    "unpacked MV3 extension loads and double-click returns bilingual demo card",
+    "service worker UI language is isolated as zh-CN",
+    "unpacked MV3 extension loads and double-click returns a Chinese demo card",
     "280ms expansion has an intermediate width and completes",
-    "expanded card exposes example, translation, usage and pronunciation",
+    "expanded card exposes example and pronunciation",
+    "Chinese card retains translation and usage",
     "Escape closes panel",
     "editable input does not trigger lookup",
     "multi-selection creates three connected cards",
@@ -16,26 +18,20 @@
     "outside click closes cards",
     "expanded card stays inside viewport at bottom-right selection",
     "expanded card fits a 390px viewport",
-    "extension options persist provider",
+    "options page shows the Chinese save button",
+    "extension options persist settings in the Chinese interface",
+    "packaged demo page shows the Chinese trial button",
     "packaged demo page initializes its own local card UI",
-    "Chinese-first mode renders Chinese definitions through the background provider",
-    "open dictionary result retains source, license and quotation reference",
+    "Chinese-first mode renders Chinese definitions through the background",
+    "dictionary card retains its source, license and examples",
+    "Chinese UI lookup requests Chinese Wiktionary",
     "English fallback is labelled with its actual source and visible reason",
-    "a confirmed HTTP 404 shows the requested no-word text",
+    "a confirmed HTTP 404 shows the Chinese no-word text",
     "late lookup response does not reopen a dismissed panel",
-    "live free API returns an actual apple entry",
-    "live wiktionary API returns an actual apple entry",
-    "live Wiktionary response contains a Chinese definition",
     "no uncaught content-page JavaScript errors"
   ],
-  "liveFree": {
-    "status": "ok",
-    "meaningCount": 2,
-    "firstDefinition": "A common, round fruit produced by the tree Malus domestica, cultivated in temperate climates."
-  },
-  "liveWiktionary": {
-    "status": "ok",
-    "meaningCount": 1,
-    "firstDefinition": "蘋果（水果）"
-  }
+  "liveFree": null,
+  "liveWiktionary": null,
+  "uiLanguage": "zh-CN",
+  "localeMode": "shimmed chrome.i18n.getUILanguage"
 }

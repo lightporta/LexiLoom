@@ -40,12 +40,15 @@ npm test
 npm run check
 npm run package
 node tools/browser-qa.js
+node tools/browser-locale-qa.js
 ```
 
 The [CI workflow](../.github/workflows/ci.yml) runs Node tests, the static check, packaging, and real Chromium extension automation on Windows, Linux, and macOS. Each platform uploads its browser report and screenshots. A later job compares the file names and raw bytes of the three universal ZIPs. After the first push to GitHub, read each platform's result in Actions.
 
 Automation uses the Chromium build Playwright downloads and loads the extension in a persistent context. It actually drives the cards and the settings page. Playwright's documentation describes headless extension testing. Shipping Chrome and Edge have removed some command-line flags for loading extensions, so the tests use Chromium. [Extension testing](https://playwright.dev/docs/chrome-extensions), [browser install](https://playwright.dev/docs/browsers), [playwright-core CLI](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/package.json).
 
-CI uses deterministic test entries and responses by default. The browser and the extension really run; the check does not depend on a third-party dictionary site being online. To check the Free Dictionary API separately, set `LEXILOOM_LIVE_TESTS=1` and run the browser check again. That result is recorded apart from the simulated responses and the local demo. The browser check forces `--lang=zh-CN` so Chinese-interface assertions do not change on an English runner.
+CI uses deterministic test entries and responses by default. The browser and the extension really run; the check does not depend on a third-party dictionary site being online. To check the Free Dictionary API separately, set `LEXILOOM_LIVE_TESTS=1` and run the browser check again. That result is recorded apart from the simulated responses and the local demo.
+
+The Chinese-interface check does not use `--lang=zh-CN`. On macOS and Linux that flag does not change `chrome.i18n.getUILanguage()`. The test copies the extension and replaces that function in the content script, the settings page and the background, then runs the original Chinese card checks. `browser-locale-qa.js` does the same for Simplified Chinese, Hong Kong, Taiwan and English. On Windows, the launcher test compares a temporary directory by the operating system's final path, so an 8.3 short name and the long path of the same directory count as one directory.
 
 **Limit of the evidence:** The local browser run that has already been executed was on macOS. This workflow is written and has not yet run on remote GitHub Actions. Windows and Linux results have to come from those runners later. Configuring three platforms is not the same as having measured three platforms. A successful call to a licensed dictionary API still needs valid credentials from you. Demo entries and simulated responses do not prove that.

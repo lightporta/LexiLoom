@@ -1,4 +1,6 @@
 'use strict';
+(async () => {
+await globalThis.LexiLoomI18n.ready;
 const t = (key, substitutions) => globalThis.LexiLoomI18n.t(key, substitutions);
 const english = globalThis.LexiLoomI18n.locale() === 'en';
 const names = { smart: 'providerSmart', wiktionary: 'providerWiktionary', free: 'providerFree', demo: 'providerDemo', oxford: 'providerOxford', cambridge: 'providerCambridge' };
@@ -26,3 +28,4 @@ enabled.addEventListener('change', async () => {
 });
 document.querySelector('#options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 document.querySelector('#try').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('try.html') }));
+})();

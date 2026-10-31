@@ -24,6 +24,9 @@
   }
 
   function presentEntry(result, language = 'zh-CN') {
+    // A Chinese headword needs its Chinese spelling, reading and examples even
+    // in an English UI. English-only projection applies to English headwords.
+    if (result?.language === 'zh') return result;
     if (!result || typeof result !== 'object' || localeFrom(language) !== 'en') return result;
     if (result.status !== 'ok') {
       const next = { ...result };

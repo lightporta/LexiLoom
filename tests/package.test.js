@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
+import { realpath as realpathCallback } from 'node:fs';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { crc32, createZip, directoryEntries } from '../tools/zip.js';
@@ -9,6 +10,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execute = promisify(execFile);
+const nativeRealpath = promisify(realpathCallback.native);
 
 // Independent CRC and ZIP reader verify local records and the central directory.
 function checksum(bytes) {
@@ -107,9 +109,18 @@ test('packaging rejects links to files outside the extension', { skip: process.p
   await assert.rejects(directoryEntries(join(root, 'extension')), /Symbolic links/);
 });
 
+async function directoryIdentity(path) {
+  // Node's JS realpath leaves Windows 8.3 names (RUNNER~1) untouched, so the
+  // long path and the short path of one temp directory compare as different.
+  // The native call asks the OS for the final path. Drive-letter case still varies.
+  let resolved = await nativeRealpath(path);
+  if (process.platform === 'win32') resolved = resolved.replace(/^\\\\\?\\UNC\\/i, '\\\\').replace(/^\\\\\?\\/, '').toLowerCase();
+  return resolved;
+}
+
 test('Node launchers locate spaced project paths and load .env only for the bridge', async t => {
   const root = await mkdtemp(join(tmpdir(), 'LexiLoom launcher with spaces '));
-  const canonicalRoot = await realpath(root);
+  const canonicalRoot = await directoryIdentity(root);
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const directory of ['scripts', 'tools', 'bridge']) await mkdir(join(root, directory));
   await writeFile(join(root, 'package.json'), JSON.stringify({ type: 'module' }));
@@ -120,16 +131,20 @@ test('Node launchers locate spaced project paths and load .env only for the brid
   const env = { ...process.env };
   delete env.LEXILOOM_TEST_ONLY;
   const options = { cwd: tmpdir(), env };
+  async function received() {
+    const value = JSON.parse(await readFile(join(root, 'received.json'), 'utf8'));
+    return { ...value, cwd: await directoryIdentity(value.cwd) };
+  }
   await assert.rejects(execute(process.execPath, [join(root, 'scripts/start.js'), 'bridge'], options), error => error.code === 1 && error.stderr.includes('Missing bridge/.env'));
   await writeFile(join(root, 'bridge/.env'), 'LEXILOOM_TEST_ONLY=private-fixture\n');
   const bridge = await execute(process.execPath, [join(root, 'scripts/start.js'), 'bridge'], options);
-  assert.deepEqual(JSON.parse(await readFile(join(root, 'received.json'), 'utf8')), { cwd: canonicalRoot, configured: true });
+  assert.deepEqual(await received(), { cwd: canonicalRoot, configured: true });
   assert.ok(!bridge.stdout.includes('private-fixture') && !bridge.stderr.includes('private-fixture'));
   await execute(process.execPath, [join(root, 'scripts/start.js'), 'preview'], options);
-  assert.deepEqual(JSON.parse(await readFile(join(root, 'received.json'), 'utf8')), { cwd: canonicalRoot, configured: false });
+  assert.deepEqual(await received(), { cwd: canonicalRoot, configured: false });
   if (process.platform !== 'win32') {
     await writeFile(join(root, 'scripts/start-preview.sh'), await readFile(new URL('../scripts/start-preview.sh', import.meta.url)));
     await execute('sh', [join(root, 'scripts/start-preview.sh')], options);
-    assert.deepEqual(JSON.parse(await readFile(join(root, 'received.json'), 'utf8')), { cwd: canonicalRoot, configured: false });
+    assert.deepEqual(await received(), { cwd: canonicalRoot, configured: false });
   }
 });

@@ -1,4 +1,6 @@
 'use strict';
+(async () => {
+await globalThis.LexiLoomI18n.ready;
 const t = (key, substitutions) => globalThis.LexiLoomI18n.t(key, substitutions);
 const english = globalThis.LexiLoomI18n.locale() === 'en';
 const form = document.querySelector('#settings-form');
@@ -6,6 +8,12 @@ const provider = document.querySelector('#provider');
 const enabled = document.querySelector('#enabled');
 const token = document.querySelector('#bridge-token');
 const status = document.querySelector('#save-status');
+const chineseRegion = document.querySelector('#chinese-region');
+function showRegion() {
+  const profile = globalThis.LexiLoomLocale.profile(globalThis.LexiLoomI18n.languageTag(), chineseRegion.value);
+  document.querySelector('#resolved-region').textContent = t('regionResolved', [t(`region${profile.region}`)]);
+}
+chineseRegion.addEventListener('change', showRegion);
 const notes = { smart: 'noteSmart', wiktionary: 'noteWiktionary', free: 'noteFree', demo: 'noteDemo', oxford: 'noteOxford', cambridge: 'noteCambridge' };
 if (english) document.querySelector('.brand-cn')?.remove();
 for (const option of provider.options) {
@@ -31,6 +39,8 @@ async function load() {
       ? (globalThis.LexiLoomPresent.ENGLISH_PROVIDERS.includes(settings.englishProvider) ? settings.englishProvider : 'free')
       : settings.provider;
     token.value = settings.bridgeToken || '';
+    chineseRegion.value = ['CN', 'HK', 'TW'].includes(settings.chineseRegion) ? settings.chineseRegion : 'auto';
+    showRegion();
     showProvider();
   } catch { status.textContent = t('readFailed'); status.dataset.error = 'true'; }
 }
@@ -42,7 +52,7 @@ form.addEventListener('submit', async event => {
     if (['oxford', 'cambridge'].includes(provider.value) && token.value.trim().length < 24) {
       status.textContent = t('tokenShort'); status.dataset.error = 'true'; return;
     }
-    const settings = { enabled: enabled.checked, bridgeToken: token.value };
+    const settings = { enabled: enabled.checked, bridgeToken: token.value, chineseRegion: chineseRegion.value };
     if (english) settings.englishProvider = provider.value;
     else settings.provider = provider.value;
     const response = await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings });
@@ -52,6 +62,7 @@ form.addEventListener('submit', async event => {
 });
 document.querySelector('#restore').addEventListener('click', () => {
   enabled.checked = true; provider.value = english ? 'free' : 'smart'; token.value = ''; showProvider();
+  chineseRegion.value = 'auto'; showRegion();
   status.textContent = t('restored'); status.dataset.error = 'false';
 });
 document.querySelector('#check-bridge').addEventListener('click', async event => {
@@ -91,3 +102,4 @@ document.querySelector('#list-dictionaries').addEventListener('click', async eve
   finally { event.target.disabled = false; }
 });
 load();
+})();

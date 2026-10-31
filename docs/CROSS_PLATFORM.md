@@ -40,6 +40,7 @@ npm test
 npm run check
 npm run package
 node tools/browser-qa.js
+node tools/browser-locale-qa.js
 ```
 
 [CI 工作流](../.github/workflows/ci.yml) 已配置 Windows、Linux、macOS 三个平台的 Node 测试、静态检查、打包以及真实 Chromium 扩展自动化。每个平台上传独立的浏览器报告和截图，再由汇总任务比较三份通用 ZIP 的文件名与原始字节。首次上传到 GitHub 后，可在 Actions 中查看各平台的实际结果。
@@ -47,5 +48,7 @@ node tools/browser-qa.js
 自动化使用 Playwright 下载的 Chromium，通过持久上下文加载扩展；它会实际操作浏览器中的词卡和设置页。官方文档说明该方式支持无界面扩展测试，Chrome/Edge 成品浏览器已移除部分命令行加载扩展参数，因此测试使用 Chromium。[扩展测试说明](https://playwright.dev/docs/chrome-extensions)、[浏览器安装说明](https://playwright.dev/docs/browsers)、[playwright-core CLI 定义](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/package.json)。
 
 CI 默认使用确定性测试词条和响应，浏览器与扩展本身实际运行，不依赖第三方词典网站当时是否在线。需要单独验证 Free Dictionary API 联网情况时，可设置环境变量 `LEXILOOM_LIVE_TESTS=1` 再运行浏览器检查；这与模拟响应和本地演示检查分别记录。
+
+中文界面的检查不靠 `--lang=zh-CN`。macOS 和 Linux 上这个参数改不了 `chrome.i18n.getUILanguage()`。测试会复制扩展，在内容脚本、设置页和后台里把这个函数换成指定语言，再跑原来的中文词卡检查。`browser-locale-qa.js` 用同一办法分别看简体、香港、台湾和英文界面。Windows 上启动器测试用系统最终路径比较临时目录，避免把同一个目录的 8.3 短名和长路径当成两个目录。
 
 **验证边界：** 当前已执行的本地浏览器验证来自 macOS。此工作流已编写，尚未在远程 GitHub Actions 上运行；Windows/Linux 的真实结果须以后续对应 runner 的报告为准。三平台配置不等同于三平台实测。词典授权 API 的成功访问还需要用户提供有效凭据，不能由本地演示词条或模拟响应证明。

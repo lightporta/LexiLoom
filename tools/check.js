@@ -1,7 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { resolve, join } from 'node:path';
+import { resolve, join, relative, sep } from 'node:path';
 import assert from 'node:assert/strict';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const extension = join(root, 'extension');
@@ -28,22 +28,26 @@ for (const path of all.filter(file => file.endsWith('.html'))) {
   }
 }
 assert.ok(!all.some(path => /(?:\.env|node_modules|\.test\.)/.test(path)));
-const locales = ['zh_CN', 'en'];
+const locales = (await readdir(join(extension, '_locales'), { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+for (const required of ['zh_CN', 'zh_TW', 'en']) assert.ok(locales.includes(required), `Missing locale ${required}`);
 const catalogs = Object.fromEntries(await Promise.all(locales.map(async name => [name, JSON.parse(await readFile(join(extension, '_locales', name, 'messages.json'), 'utf8'))])));
 const zhKeys = Object.keys(catalogs.zh_CN).sort();
-assert.deepEqual(zhKeys, Object.keys(catalogs.en).sort(), 'Locale catalogs must use the same message keys.');
+for (const name of locales) assert.deepEqual(zhKeys, Object.keys(catalogs[name]).sort(), `Locale catalog ${name} must use the same message keys.`);
 assert.equal(manifest.default_locale, 'zh_CN');
-const placeholders = value => [...String(value?.message || '').matchAll(/\$\d+/g)].map(item => item[0]).join(',');
+const placeholders = value => [...new Set([...String(value?.message || '').matchAll(/\$\d+/g)].map(item => item[0]))].sort().join(',');
 for (const key of zhKeys) {
   assert.match(key, /^[A-Za-z0-9_]+$/, key);
   for (const name of locales) {
     assert.equal(typeof catalogs[name][key].message, 'string', key);
     assert.ok(catalogs[name][key].message.trim(), `${name} ${key}`);
   }
-  assert.equal(placeholders(catalogs.zh_CN[key]), placeholders(catalogs.en[key]), key);
+  for (const name of locales) assert.equal(placeholders(catalogs.zh_CN[key]), placeholders(catalogs[name][key]), `${name} ${key}`);
 }
 const used = new Set();
 for (const file of all.filter(item => item.endsWith('.js') || item.endsWith('.html'))) {
+  // Vendored converters contain unrelated minified functions named t().
+  // They are syntax-checked above, but do not reference our UI message keys.
+  if (relative(extension, file).split(sep).join('/').startsWith('shared/chinese-data/')) continue;
   const source = await readFile(file, 'utf8');
   for (const match of source.matchAll(/data-i18n(?:-aria|-title)?="([A-Za-z0-9_]+)"/g)) used.add(match[1]);
   for (const match of source.matchAll(/\bt\(\s*["']([A-Za-z0-9_]+)["']/g)) used.add(match[1]);

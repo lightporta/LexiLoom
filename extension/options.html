@@ -8,6 +8,7 @@
       <h2 data-i18n="optionsSectionLookup">网页查词</h2><label class="switch-row"><span data-i18n="optionsToggleLookup">双击与划词查词</span><input id="enabled" class="switch" type="checkbox"></label>
       <label class="field"><span data-i18n="optionsProviderLabel">词典来源</span><select id="provider"><option value="smart" data-i18n="optionSmart">中文优先 · 维基词典 + 英英回退，无需密钥</option><option value="wiktionary" data-i18n="optionWiktionary">中文维基词典 · WiktApi，无需密钥</option><option value="free" data-i18n="optionFree">Free Dictionary · 在线英英，无需密钥</option><option value="demo" data-i18n="optionDemo">本地双语演示 · 自编词条</option><option value="oxford" data-i18n="optionOxford">Oxford Dictionaries API · 需官方授权</option><option value="cambridge" data-i18n="optionCambridge">Cambridge Dictionary API · 需官方授权</option></select></label>
       <div class="source-note" id="source-note"></div>
+      <label class="field"><span data-i18n="chineseRegionLabel">中文词条地区</span><select id="chinese-region"><option value="auto" data-i18n="regionAuto">跟随界面语言</option><option value="CN" data-i18n="regionCN">中国大陆 · 简体 / 汉语拼音</option><option value="HK" data-i18n="regionHK">香港 · 繁体 / 粤拼</option><option value="TW" data-i18n="regionTW">台湾 · 繁体 / 注音</option></select><small id="resolved-region"></small><small data-i18n="regionHelp">部分浏览器只提供“繁体中文”，无法区分香港和台湾时，可在这里指定。</small></label>
     </section>
     <section class="settings-card" id="bridge-section" hidden>
       <h2 data-i18n="bridgeHeading">连接本地词典服务</h2>
@@ -23,4 +24,4 @@
   </form>
   <section class="settings-card"><h2 data-i18n="guideHeading">从一个词开始</h2><ol class="guide"><li data-i18n="guide1">双击网页中的英文单词，出现紧凑词卡。</li><li data-i18n="guide2">点击词卡展开释义、音标、用法和例句；再次点击词头收起。</li><li data-i18n="guide3">拖选多个单词后，点击出现的“查词”按钮，生成相连的词卡。</li><li data-i18n="guide4">按住 Ctrl / ⌘ 再双击其他单词可以追加，最多 8 个。</li><li data-i18n="guide5">点击退出或按 Esc 关闭。Chrome 内部页、商店页、内置 PDF 阅读器不支持注入。</li></ol></section>
   <footer class="settings-footer" data-i18n="settingsFooter">只在主动查词时发送选中的词。不上传整页内容，不保存查词历史。中文释义来自中文维基词典，部分为繁体；英英回退和各来源会在词卡中注明。演示词库为自编内容。</footer>
-</main><script src="shared/i18n.js"></script><script src="shared/present.js"></script><script src="ui/options.js"></script></body></html>
+</main><script src="shared/locale.js"></script><script src="shared/i18n.js"></script><script src="shared/present.js"></script><script src="ui/options.js"></script></body></html>

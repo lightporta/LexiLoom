@@ -136,7 +136,7 @@
   function snapshot() {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || !selection.rangeCount) return null;
-    const parsed = core.parseSelection(selection.toString());
+    const parsed = core.parseSelection(selection.toString(), i18n?.languageTag() || 'zh-CN');
     if (!parsed.words.length) return null;
     const range = selection.getRangeAt(0).cloneRange();
     const rect = range.getBoundingClientRect();
@@ -248,7 +248,8 @@
     const wordRow = element("span", "word-row");
     const expandHint = element("span", "expand-hint", "+");
     expandHint.setAttribute("aria-hidden", "true");
-    wordRow.append(element("span", "word", word), expandHint);
+    const wordLabel = element("span", "word", word);
+    wordRow.append(wordLabel, expandHint);
     const phonetic = element("span", "phonetic");
     const summaryText = element("span", "summary-text loading", t("loading"));
     const meta = element("span", "summary-meta");
@@ -270,14 +271,14 @@
     const details = element("div", "details");
     clip.append(details); fold.append(clip);
     article.append(summary, lookupNotice, remove, fold);
-    const card = { word, article, summary, phonetic, summaryText, sourceLabel, tapHint, expandHint, lookupNotice, fold, details, open: false, version: 0 };
+    const card = { word, wordLabel, article, summary, phonetic, summaryText, sourceLabel, tapHint, expandHint, lookupNotice, fold, details, open: false, version: 0 };
     cardList.append(article);
     cards.set(word, card);
     updateCount();
     return card;
   }
 
-  async function pronounce(word, pronunciation, node) {
+  async function pronounce(word, pronunciation, node, entry) {
     stopAudio();
     if (!node.dataset.defaultLabel) node.dataset.defaultLabel = node.textContent;
     node.textContent = node.dataset.defaultLabel;
@@ -298,7 +299,9 @@
       return;
     }
     const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = /UK|British|英/i.test(pronunciation.label || "") ? "en-GB" : "en-US";
+    utterance.lang = entry?.language === 'zh'
+      ? /粤|粵|Jyutping|Cantonese|yue/i.test(pronunciation.label || '') ? 'zh-HK' : entry.region === 'TW' ? 'zh-TW' : 'zh-CN'
+      : /UK|British|英/i.test(pronunciation.label || "") ? "en-GB" : "en-US";
     utterance.rate = .85;
     currentUtterance = utterance;
     const clearUtterance = () => {
@@ -318,17 +321,24 @@
       const hasAudio = Boolean(safeURL(pronunciation.audio));
       const audioLabel = hasAudio ? t("audioDictionary") : t("audioSystem");
       const label = ["▷", text(pronunciation.label), text(pronunciation.phonetic), audioLabel].filter(Boolean).join("  ");
-      const node = button("pronunciation", label, `${card.word} · ${audioLabel}`, () => pronounce(card.word, pronunciation, node));
+      const node = button("pronunciation", label, `${card.word} · ${audioLabel}`, () => pronounce(card.word, pronunciation, node, result));
       pronunciationRow.append(node);
     }
     if (!pronunciations.length || pronunciations.every(item => safeURL(item.audio))) {
       const system = { label: t("audioSystem") };
-      const node = button("pronunciation", `▷ ${t("audioSystem")}`, t("audioSystem"), () => pronounce(card.word, system, node));
+      const node = button("pronunciation", `▷ ${t("audioSystem")}`, t("audioSystem"), () => pronounce(card.word, system, node, result));
       pronunciationRow.append(node);
     }
     card.details.append(pronunciationRow, element("div", "section-label", t("sectionMeaning")));
     const english = englishUi();
+    const chineseWord = result.language === 'zh';
+    let examplesShown = 0;
+    let meaningLanguage;
     for (const meaning of (Array.isArray(result.meanings) ? result.meanings : []).slice(0, 12)) {
+      if (chineseWord && meaning.language && meaning.language !== meaningLanguage) {
+        card.details.append(element('div', 'section-label meaning-heading', t(meaning.language === 'en' ? 'sectionEnglishMeaning' : 'sectionChineseMeaning')));
+        meaningLanguage = meaning.language;
+      }
       const part = text(meaning.partOfSpeech);
       const gloss = english ? "" : POS[part.toLowerCase()];
       if (part || gloss) card.details.append(element("div", "part-of-speech", [part, gloss].filter(Boolean).join(" · ")));
@@ -336,14 +346,16 @@
       for (const definition of (Array.isArray(meaning.definitions) ? meaning.definitions : []).slice(0, 8)) {
         const item = element("li");
         item.append(element("p", "definition", text(definition.definition)));
-        if (!english && definition.translation) item.append(element("p", "translation", text(definition.translation)));
+        if ((!english || chineseWord) && definition.translation) item.append(element("p", "translation", text(definition.translation)));
         for (const example of (Array.isArray(definition.examples) ? definition.examples : []).slice(0, 4)) {
+          if (chineseWord && examplesShown >= 2) break;
           const exampleNode = element("blockquote", "example", text(example.text));
-          if (!english && example.translation) exampleNode.append(element("div", "example-translation", text(example.translation)));
-          if (!english && example.reference) exampleNode.append(element("cite", "source-note example-reference", text(example.reference)));
+          if ((!english || chineseWord) && example.translation) exampleNode.append(element("div", "example-translation", text(example.translation)));
+          if ((!english || chineseWord) && example.reference) exampleNode.append(element("cite", "source-note example-reference", text(example.reference)));
           item.append(exampleNode);
+          examplesShown++;
         }
-        if (!english && definition.usage) item.append(element("div", "usage", t("usagePrefix", [text(definition.usage)])));
+        if ((!english || chineseWord) && definition.usage) item.append(element("div", "usage", t("usagePrefix", [text(definition.usage)])));
         definitions.append(item);
       }
       card.details.append(definitions);
@@ -373,6 +385,20 @@
       license.href = licenseURL; license.target = "_blank"; license.rel = "noopener noreferrer";
       entryFooter.append(license);
     }
+    for (const component of (Array.isArray(result.source?.components) ? result.source.components : []).slice(0, 6)) {
+      const href = safeURL(component.url);
+      if (!href || href === safeURL(result.source?.url)) continue;
+      const link = element('a', 'source-link source-component', text(component.name));
+      link.href = href; link.target = '_blank'; link.rel = 'noopener noreferrer';
+      entryFooter.append(link);
+      if (component.copyright) entryFooter.append(element('div', 'source-note', text(component.copyright)));
+      const licenseHref = safeURL(component.license?.url);
+      if (licenseHref) {
+        const license = element('a', 'source-link source-license', text(component.license.name) || t('sourceLicense'));
+        license.href = licenseHref; license.target = '_blank'; license.rel = 'noopener noreferrer';
+        entryFooter.append(license);
+      }
+    }
     for (const pronunciation of pronunciations) {
       const href = safeURL(pronunciation.attributionUrl);
       if (!href) continue;
@@ -384,7 +410,8 @@
   }
 
   function renderResult(card, raw) {
-    const result = present?.presentEntry(raw, englishUi() ? "en" : "zh-CN") || raw;
+    const result = present?.presentEntry(raw, i18n?.languageTag() || 'zh-CN') || raw;
+    card.wordLabel.textContent = text(result.displayWord) || card.word;
     card.article.setAttribute("aria-busy", "false");
     const notice = noticeText(result);
     card.lookupNotice.textContent = notice;
@@ -394,15 +421,16 @@
     card.phonetic.textContent = text(result.phonetic) || text(result.pronunciations?.[0]?.phonetic);
     card.sourceLabel.textContent = sourceName(result.source);
     if (result.status === "ok") {
-      const first = result.meanings?.find(meaning => meaning.definitions?.length);
+      const first = (result.language === 'zh' && result.meanings?.find(meaning => meaning.language === (englishUi() ? 'en' : 'zh') && meaning.definitions?.length))
+        || result.meanings?.find(meaning => meaning.definitions?.length);
       const definition = first?.definitions?.[0];
       const part = text(first?.partOfSpeech);
       const gloss = englishUi() ? part : (POS[part.toLowerCase()] || part);
-      const meaningText = englishUi() ? text(definition?.definition) : (text(definition?.translation) || text(definition?.definition));
+      const meaningText = englishUi() || result.language === 'zh' ? text(definition?.definition) : (text(definition?.translation) || text(definition?.definition));
       card.summaryText.textContent = [gloss, meaningText].filter(Boolean).join(" · ") || (result.noticeKey === "noticeNoEnglish" ? t("noticeNoEnglish") : t("foundPrompt"));
       renderDetails(card, result);
     } else {
-      card.summaryText.textContent = result.status === "not-found" ? t("notFound") : errorText(result);
+      card.summaryText.textContent = result.status === "not-found" ? t(core.wordLanguage(card.word) === 'zh' ? 'notFoundChinese' : 'notFound') : errorText(result);
       card.details.replaceChildren(element("div", "divider"), element("p", "definition", result.status === "not-found" ? t("notFoundHint") : t("errorRetryHint")));
       const actions = element("div", "state-actions");
       if (result.status !== "not-found") actions.append(button("text-button", t("retry"), undefined, () => loadCard(card)));

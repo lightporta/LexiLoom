@@ -8,6 +8,7 @@ function selectAndLookup(node) {
 }
 document.querySelector('#show-single').addEventListener('click', () => selectAndLookup(document.querySelector('#sample-serendipity')));
 document.querySelector('#show-multi').addEventListener('click', () => selectAndLookup(document.querySelector('#multi-sample')));
+document.querySelector('#show-chinese').addEventListener('click', () => selectAndLookup(document.querySelector('#chinese-sample')));
 document.querySelector('#show-missing').addEventListener('click', () => {
   const node = document.querySelector('#demo-hint');
   node.textContent = 'qzxqzxqz'; selectAndLookup(node);

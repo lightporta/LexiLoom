@@ -31,6 +31,8 @@ jobs:
         run: npm ci
       - name: Remove previous browser evidence
         run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await Promise.all(['browser-validation.json','browser-single.png','browser-multi.png','browser-narrow.png','browser-wiktionary.png','reading-room.png','qa-failure.png'].map(name => rm('docs/' + name, { force:true })));"
+      - name: Remove previous locale fixture evidence
+        run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-locales', { recursive:true, force:true });"
       - name: Node regression tests
         run: npm test
       - name: Check extension and scripts
@@ -45,6 +47,8 @@ jobs:
         run: npx --no-install playwright-core install chromium
       - name: Run actual Chromium extension checks
         run: node tools/browser-qa.js
+      - name: Check Chinese regions and English in real Chromium with controlled UI locale inputs
+        run: node tools/browser-locale-qa.js
       - name: Upload this platform's universal package
         uses: actions/upload-artifact@v7
         with:
@@ -61,6 +65,7 @@ jobs:
             docs/browser-*.png
             docs/reading-room.png
             docs/qa-failure.png
+            test-results/browser-locales/**
           if-no-files-found: warn
           retention-days: 14
 

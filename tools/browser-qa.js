@@ -1,35 +1,40 @@
 // Uses a real isolated browser and deterministic dictionary fixtures.
+// --lang does not change chrome.i18n.getUILanguage() on macOS or Linux, so the
+// Chinese checks below run against a copy whose getUILanguage is zh-CN.
 // LEXILOOM_LIVE_TESTS=1 additionally checks the public dictionary services.
-import { mkdtemp, readFile, mkdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { openLocaleHarness } from './browser-test-harness.js';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
 const root = fileURLToPath(new URL('../', import.meta.url));
-const extension = join(root, 'extension');
-const profile = await mkdtemp(join(tmpdir(), 'lexiloom-qa-'));
 const docs = join(root, 'docs'); await mkdir(docs, { recursive: true });
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
-const context = await chromium.launchPersistentContext(profile, {
-  headless: true, viewport: { width: 1280, height: 960 },
-  channel: 'chromium',
-  args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`, '--lang=zh-CN']
-});
-const report = { version: pkg.version, platform: process.platform, node: process.version, browser: context.browser()?.version(), checks: [], liveFree: null, liveWiktionary: null };
+const catalog = JSON.parse(await readFile(join(root, 'extension/_locales/zh_CN/messages.json'), 'utf8'));
+const savedText = catalog.saved.message;
+const notFoundText = catalog.notFound.message;
+const report = { version: pkg.version, platform: process.platform, node: process.version, browser: '', checks: [], liveFree: null, liveWiktionary: null, uiLanguage: 'zh-CN', localeMode: 'shimmed chrome.i18n.getUILanguage' };
 const check = (name, value) => { assert.ok(value, name); report.checks.push(name); console.log(`PASS ${name}`); };
+let harness;
 try {
-  console.log('Browser started:', context.browser()?.version());
-  const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', { timeout: 15000 });
+  harness = await openLocaleHarness(chromium, 'zh-CN', { blockNetwork: false });
+  const { context, worker, page, errors } = harness;
+  report.browser = context.browser()?.version();
+  console.log('Browser started:', report.browser);
   console.log('Extension worker registered:', worker.url());
-  const extensionId = new URL(worker.url()).host;
-  await worker.evaluate(async () => { await chrome.storage.local.set({ settings: { enabled: true, provider: 'demo', bridgeToken: '' } }); });
-  const page = await context.newPage();
-  const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  const html = await readFile(join(root, 'tests/fixtures/reading.html'), 'utf8');
-  await context.route('http://reading.lexiloom.test/**', route => route.fulfill({ contentType: 'text/html', body: html }));
-  await page.goto('http://reading.lexiloom.test/');
+  const extensionId = harness.extensionId;
+  const language = await worker.evaluate(() => chrome.i18n.getUILanguage());
+  check('service worker UI language is isolated as zh-CN', language === 'zh-CN');
+  await worker.evaluate(async () => {
+    globalThis.__LEXILOOM_QA_FETCH__ = globalThis.__LEXILOOM_QA_ORIGINAL_FETCH__ || globalThis.fetch;
+    // A deterministic browser test must never fall through to public services.
+    globalThis.fetch = async (url, init) => {
+      if (String(url).startsWith('chrome-extension://')) return globalThis.__LEXILOOM_QA_FETCH__(url, init);
+      throw new Error('Unexpected network request in offline browser QA');
+    };
+    await chrome.storage.local.set({ settings: { enabled: true, provider: 'demo', englishProvider: 'demo', chineseRegion: 'auto', bridgeToken: '' } });
+  });
   const cdp = await context.newCDPSession(page);
   await cdp.send('DOM.enable');
   function find(node, predicate) {
@@ -61,11 +66,12 @@ try {
   }
   await page.locator('#serendipity').dblclick(); await waitPanel(); await ready();
   console.log('First card:', await panelValue('.summary-text','return this.textContent'));
-  check('unpacked MV3 extension loads and double-click returns bilingual demo card', (await panelValue('.summary-text','return this.textContent')).includes('意外'));
+  check('unpacked MV3 extension loads and double-click returns a Chinese demo card', (await panelValue('.summary-text','return this.textContent')).includes('意外'));
   const widths = await panelValue('.panel', 'return new Promise(resolve=>{const samples=[this.getBoundingClientRect().width],start=performance.now();this.querySelector(".summary").click();const sample=()=>{samples.push(this.getBoundingClientRect().width);if(performance.now()-start<380)requestAnimationFrame(sample);else resolve(samples);};requestAnimationFrame(sample);})');
   const collapsed = widths[0], expanded = widths.at(-1);
   check('280ms expansion has an intermediate width and completes', widths.some(width=>width>collapsed+.5&&width<expanded-.5) && expanded >= 420);
-  check('expanded card exposes example, translation, usage and pronunciation', await panelValue('.details','return !!this.querySelector(".example") && !!this.querySelector(".translation") && !!this.querySelector(".usage") && !!this.querySelector(".pronunciation")'));
+  check('expanded card exposes example and pronunciation', await panelValue('.details','return !!this.querySelector(".example") && !!this.querySelector(".pronunciation")'));
+  check('Chinese card retains translation and usage', await panelValue('.details', 'return !!this.querySelector(".translation") && !!this.querySelector(".usage")'));
   await page.screenshot({ path: join(docs,'browser-single.png') });
   await page.keyboard.press('Escape');
   check('Escape closes panel', !await panelValue('.panel','return true'));
@@ -98,38 +104,44 @@ try {
   await page.screenshot({ path: join(docs,'browser-narrow.png') });
   await page.keyboard.press('Escape');
   const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
-  await options.locator('#provider').selectOption('demo'); await options.getByRole('button',{name:'保存设置'}).click();
-  check('extension options persist provider', (await options.locator('#save-status').textContent()).includes('已保存'));
+  await options.locator('button[type="submit"]').waitFor();
+  check('options page shows the Chinese save button', (await options.locator('button[type="submit"]').innerText()).includes('保存设置'));
+  await options.locator('#provider').selectOption('demo'); await options.locator('button[type="submit"]').click();
+  await options.locator('#save-status').filter({hasText: savedText}).waitFor();
+  check('extension options persist settings in the Chinese interface', (await options.locator('#save-status').textContent()) === savedText);
   const demo = await context.newPage(); await demo.goto(`chrome-extension://${extensionId}/try.html`);
-  await demo.getByRole('button',{name:'体验一个词'}).click(); await pause(400);
+  await demo.locator('#show-single').waitFor();
+  check('packaged demo page shows the Chinese trial button', (await demo.locator('#show-single').innerText()).includes('体验一个词'));
+  await demo.locator('#show-single').click(); await pause(400);
   const demoCdp = await context.newCDPSession(demo);
   const demoDoc = await demoCdp.send('DOM.getDocument',{depth:-1,pierce:true});
   check('packaged demo page initializes its own local card UI', !!find(demoDoc.root,node=>node.localName==='lexiloom-reader'));
   await demo.screenshot({path:join(docs,'reading-room.png')});
-  await worker.evaluate(() => { globalThis.__LEXILOOM_QA_FETCH__ = globalThis.fetch; });
   const wikiFixture = JSON.parse(await readFile(join(root, 'tests/fixtures/browser-wiki.json'), 'utf8'));
-  await worker.evaluate(payload => { globalThis.fetch=async()=>Response.json(payload); }, wikiFixture);
-  await options.evaluate(()=>chrome.runtime.sendMessage({type:'SAVE_SETTINGS',settings:{enabled:true,provider:'smart'}}));
+  await worker.evaluate(payload => { globalThis.__LEXILOOM_QA_REQUESTS__=[];globalThis.fetch=async (url,init)=>{if(String(url).startsWith('chrome-extension://'))return globalThis.__LEXILOOM_QA_FETCH__(url,init);globalThis.__LEXILOOM_QA_REQUESTS__.push(String(url));return Response.json(payload);}; }, wikiFixture);
+  await options.evaluate(()=>chrome.runtime.sendMessage({type:'SAVE_SETTINGS',settings:{enabled:true,provider:'smart',englishProvider:'free'}}));
   await page.setViewportSize({width:1280,height:960}); await page.bringToFront();
   await page.locator('#serendipity').dblclick(); await waitPanel(); await ready();
-  check('Chinese-first mode renders Chinese definitions through the background provider', (await panelValue('.summary-text','return this.textContent')).includes('原创测试'));
+  check('Chinese-first mode renders Chinese definitions through the background', (await panelValue('.summary-text','return this.textContent')).includes('原创测试'));
   await panelValue('.summary','this.click()'); await pause(340);
-  check('open dictionary result retains source, license and quotation reference', await panelValue('.details','return !!this.querySelector(".source-license") && !!this.querySelector(".example-reference") && this.textContent.includes("WiktApi")'));
+  check('dictionary card retains its source, license and examples', await panelValue('.details', 'return !!this.querySelector(".source-license") && !!this.querySelector(".example-reference") && this.textContent.includes("WiktApi")'));
+  const requests = await worker.evaluate(()=>globalThis.__LEXILOOM_QA_REQUESTS__);
+  check('Chinese UI lookup requests Chinese Wiktionary', requests.length === 1 && requests[0].includes('api.wiktapi.dev/'));
   await page.screenshot({path:join(docs,'browser-wiktionary.png')});
   await page.keyboard.press('Escape');
   const freeFixture = [{meanings:[{partOfSpeech:'noun',definitions:[{definition:'An original fallback dictionary definition.'}]}]}];
-  await worker.evaluate(payload => { globalThis.fetch=async url=>String(url).includes('wiktapi.dev')?new Response('{}',{status:404}):Response.json(payload); }, freeFixture);
+  await worker.evaluate(payload => { globalThis.fetch=async (url,init)=>String(url).startsWith('chrome-extension://')?globalThis.__LEXILOOM_QA_FETCH__(url,init):String(url).includes('wiktapi.dev')?new Response('{}',{status:404}):Response.json(payload); }, freeFixture);
   await page.locator('#serendipity').dblclick(); await waitPanel(); await ready();
-  check('English fallback is labelled with its actual source and visible reason', await panelValue('.card','return this.textContent.includes("Free Dictionary") && !this.querySelector(".lookup-notice").hidden'));
+  check('English fallback is labelled with its actual source and visible reason', await panelValue('.card', 'return this.textContent.includes("Free Dictionary") && !this.querySelector(".lookup-notice").hidden'));
   await page.keyboard.press('Escape');
   await options.evaluate(()=>chrome.runtime.sendMessage({type:'SAVE_SETTINGS',settings:{enabled:true,provider:'free'}}));
   // Verify missing-state text with a deterministic HTTP 404, not an invented dictionary entry.
-  await worker.evaluate(() => { globalThis.fetch = async () => { await new Promise(resolve=>setTimeout(resolve,250)); return new Response('{}',{status:404,headers:{'Content-Type':'application/json'}}); }; });
+  await worker.evaluate(() => { globalThis.fetch = async (url,init) => { if(String(url).startsWith('chrome-extension://'))return globalThis.__LEXILOOM_QA_FETCH__(url,init);await new Promise(resolve=>setTimeout(resolve,250)); return new Response('{}',{status:404,headers:{'Content-Type':'application/json'}}); }; });
   await page.setViewportSize({width:1280,height:960});
   await page.bringToFront();
   await page.locator('#missing').dblclick({position:{x:20,y:20}}); await waitPanel(); await ready();
   const missingText = await panelValue('.summary-text','return this.textContent');
-  check('a confirmed HTTP 404 shows the requested no-word text', missingText === '无法找到该单词');
+  check('a confirmed HTTP 404 shows the Chinese no-word text', missingText === notFoundText);
   await page.keyboard.press('Escape');
   await page.locator('#missing').dblclick({position:{x:20,y:20}}); await waitPanel(); await page.mouse.click(20,20); await pause(500);
   check('late lookup response does not reopen a dismissed panel', !await panelValue('.panel','return true'));
@@ -137,7 +149,7 @@ try {
   if(process.env.LEXILOOM_LIVE_TESTS === '1') {
     for(const [provider,key] of [['free','liveFree'],['wiktionary','liveWiktionary']]) {
       const online=await options.evaluate(async provider=>{
-        await chrome.runtime.sendMessage({type:'SAVE_SETTINGS',settings:{enabled:true,provider}});
+        await chrome.runtime.sendMessage({type:'SAVE_SETTINGS',settings:{enabled:true,provider,englishProvider:'free'}});
         return chrome.runtime.sendMessage({type:'LOOKUP',word:'apple'});
       },provider);
       report[key]={status:online.status,code:online.error?.code,meaningCount:online.meanings?.length||0,firstDefinition:online.meanings?.[0]?.definitions?.[0]?.definition?.slice(0,100)};
@@ -149,6 +161,8 @@ try {
   await writeFile(join(docs,'browser-validation.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report,null,2));
 } catch(error) {
-  for(const page of context.pages().filter(page=>page.url().startsWith('http://reading.')))await page.screenshot({path:join(docs,'qa-failure.png')});
+  report.error = { name:error.name, message:error.message, stack:error.stack };
+  await writeFile(join(docs,'browser-validation.json'),JSON.stringify(report,null,2)+'\n');
+  for (const page of harness?.context.pages().filter(page => page.url().startsWith('http://')) || []) await page.screenshot({ path: join(docs, 'qa-failure.png') });
   throw error;
-} finally { await context.close(); await rm(profile,{recursive:true,force:true}); }
+} finally { await harness?.close(); }

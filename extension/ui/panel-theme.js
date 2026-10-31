@@ -115,6 +115,8 @@ globalThis.LexiLoomTheme = `
   .lookup-notice { padding: 0 16px 12px; color: #9b693d; font-size: 11px; line-height: 1.7; }
   .example-reference { display: block; font-style: normal; }
   .source-license, .audio-attribution { display: block; margin-top: 6px; }
+  .source-component { display: block; margin-top: 9px; }
+  .meaning-heading { margin-top: 16px; }
   .state-actions { display: flex; padding: 0 16px 13px; gap: 9px; }
   .text-button { border: 0; padding: 0; background: transparent; font-size: 12px; color: var(--ll-green); text-decoration: underline; text-underline-offset: 3px; }
   .footer { padding: 9px 15px 11px; border-top: 1px solid var(--ll-line); color: #8b9489; font-size: 10px; line-height: 1.6; flex-shrink: 0; }

@@ -1,9 +1,11 @@
+import '../shared/locale.js';
 import '../shared/core.js';
 import '../shared/present.js';
 import '../shared/demo-data.js';
-import { lookupFree, lookupWiktionary, lookupSmart } from '../shared/providers.js';
+import { lookupFree, lookupWiktionary, lookupSmart, readJsonLimited } from '../shared/providers.js';
+import { lookupChinese, localizeChineseEntry } from '../shared/chinese.js';
 
-const { DEFAULT_SETTINGS, normalizeWord, publicSettings } = globalThis.LexiLoomCore;
+const { DEFAULT_SETTINGS, normalizeWord, wordLanguage, publicSettings } = globalThis.LexiLoomCore;
 const BRIDGE = 'http://127.0.0.1:47821';
 let lookupActive = 0;
 const lookupWaiters = [];
@@ -26,13 +28,19 @@ function errorResult(word, code, message, provider = '') {
   return { word, status: 'error', error: { code, message }, source: { id: provider, name: provider, url: '' } };
 }
 function interfaceLanguage() {
-  try { return chrome.i18n?.getUILanguage?.() || 'zh-CN'; }
-  catch { return 'zh-CN'; }
+  return globalThis.LexiLoomLocale.languageTag();
 }
 async function lookup(word) {
   const settings = await getSettings();
-  const provider = globalThis.LexiLoomPresent.resolveLookupProvider(settings, interfaceLanguage());
+  const uiLanguage = interfaceLanguage();
+  const profile = globalThis.LexiLoomLocale.profile(uiLanguage, settings.chineseRegion);
   if (!settings.enabled) return errorResult(word, 'disabled', '查词已暂停。');
+  if (wordLanguage(word) === 'zh') return withLookupSlot(() => lookupChinese(word, { region: profile.region, uiLanguage }));
+  const provider = globalThis.LexiLoomPresent.resolveLookupProvider(settings, uiLanguage);
+  const result = await lookupEnglish(word, settings, provider);
+  return profile.language === 'en' ? result : localizeChineseEntry(result, profile.region);
+}
+async function lookupEnglish(word, settings, provider) {
   if (provider === 'demo') return globalThis.LexiLoomDemo.lookup(word);
   if (provider === 'smart') return withLookupSlot(() => lookupSmart(word));
   if (provider === 'wiktionary') return withLookupSlot(() => lookupWiktionary(word));
@@ -40,7 +48,7 @@ async function lookup(word) {
   if (!settings.bridgeToken) return errorResult(word, 'not-configured', '请先在设置中连接本地词典服务。', provider);
   return withLookupSlot(async () => { try {
     const url = new URL('/v1/lookup', BRIDGE);
-    url.searchParams.set('provider', settings.provider);
+    url.searchParams.set('provider', provider);
     url.searchParams.set('word', word);
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${settings.bridgeToken}` },
@@ -63,16 +71,33 @@ function isExtensionPage(sender) {
   } catch { return false; }
 }
 let pending = 0;
+const catalogs = new Map();
+async function getCatalog(name) {
+  if (!['en', 'zh_CN', 'zh_TW'].includes(name)) return { error: 'invalid-catalog' };
+  if (!catalogs.has(name)) {
+    const pending = (async () => {
+      const response = await fetch(new URL(`../_locales/${name}/messages.json`, import.meta.url), { cache: 'no-store' });
+      if (!response.ok) throw new Error('catalog');
+      const messages = await readJsonLimited(response);
+      if (!messages?.extName?.message || Object.values(messages).some(value => typeof value?.message !== 'string')) throw new Error('catalog');
+      return { messages };
+    })();
+    catalogs.set(name, pending);
+    pending.catch(() => catalogs.delete(name));
+  }
+  return catalogs.get(name);
+}
 async function handle(message, sender) {
   if (sender.id !== chrome.runtime.id) return { error: 'unauthorized' };
   if (message.type === 'GET_SETTINGS') return publicSettings(await getSettings());
+  if (message.type === 'GET_CATALOG') return getCatalog(message.catalog);
   if (message.type === 'OPEN_OPTIONS') {
     await chrome.runtime.openOptionsPage();
     return { ok: true };
   }
   if (message.type === 'LOOKUP') {
     const word = normalizeWord(message.word);
-    if (!word) return errorResult('', 'invalid-word', '首版支持 48 个字符以内的英文单词。');
+    if (!word) return errorResult('', 'invalid-word', '请选择 48 个字符以内的英文单词或中文字词。');
     if (pending >= 16) return errorResult(word, 'busy', '正在查询其他单词，请稍后重试。');
     pending++;
     try { return await lookup(word); } finally { pending--; }
@@ -86,6 +111,7 @@ async function handle(message, sender) {
     if (typeof incoming.bridgeToken === 'string') next.bridgeToken = incoming.bridgeToken.trim().slice(0, 512);
     if (['smart', 'wiktionary', 'demo', 'free', 'oxford', 'cambridge'].includes(incoming.provider)) next.provider = incoming.provider;
     if (globalThis.LexiLoomPresent.ENGLISH_PROVIDERS.includes(incoming.englishProvider)) next.englishProvider = incoming.englishProvider;
+    if (['auto', 'CN', 'HK', 'TW'].includes(incoming.chineseRegion)) next.chineseRegion = incoming.chineseRegion;
     await chrome.storage.local.set({ settings: next });
     return { ok: true };
   }

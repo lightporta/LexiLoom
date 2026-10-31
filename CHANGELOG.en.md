@@ -2,6 +2,13 @@
 
 [中文](CHANGELOG.md)
 
+## 0.3.0 · 2026-10-31
+
+- Chinese words use the same card as English words. Simplified Chinese shows Hanyu Pinyin. Taiwan shows the Ministry of Education wording and Zhuyin. Hong Kong prefers Jyutping marked as Hong Kong.
+- A Chinese entry includes an English explanation and at most two examples. The card says when a reading, definition or example is missing.
+- Script conversion applies to Wiktionary display and search spelling. A converted entry is not treated as another region's dictionary.
+- Browser tests set the interface language inside a copy of the extension. `--lang` does not change the extension language on macOS or Linux. On Windows, the long and short names of one temporary directory are compared as the operating system's final path.
+
 ## 0.2.1 · 2026-10-31
 
 - The interface follows the browser language. The Chinese interface keeps the existing Chinese-first cards. The English interface shows only the English definition, pronunciation, and example sentences, and it does not request the Chinese Wiktionary service.

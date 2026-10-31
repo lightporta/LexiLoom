@@ -6,11 +6,23 @@ The [MIT License](LICENSE) covers original code, styles, original demo entries, 
 
 ## Chinese Wiktionary / WiktApi
 
-Chinese glosses are structured by [WiktApi](https://wiktapi.dev/quickstart). The data comes from [Chinese Wiktionary](https://zh.wiktionary.org/) through pipelines such as [Kaikki / Wiktextract](https://kaikki.org/). WiktApi is an independent third-party service, not an official Wikimedia, Oxford, or Cambridge service. The English interface does not request it.
+Chinese glosses are structured by [WiktApi](https://wiktapi.dev/quickstart). The data comes from [Chinese Wiktionary](https://zh.wiktionary.org/) through pipelines such as [Kaikki / Wiktextract](https://kaikki.org/). WiktApi is an independent third-party service, not an official Wikimedia, Oxford, or Cambridge service. English headwords in the English interface use Free Dictionary and do not call this service. Chinese headwords do, including from the English interface.
 
 Cards link to the original entry and show “Chinese Wiktionary, excerpted via WiktApi” together with the [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license link. Definitions and examples are shortened for display and the original text is kept. Citations use the reference the response provides. Other items may have further source requirements. The entry itself and [Wikimedia Terms of Use §7](https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use#7._Licensing_of_Content) are the full record.
 
+The Chinese entry in English Wiktionary is also read through WiktApi, so a Chinese word can show an English explanation. That text is CC BY-SA 4.0 as well.
+
 Wikimedia Commons audio is licensed separately from the entry text. Cards link to the File description page for author, source, and license. They do not assume every audio file is CC BY-SA 4.0.
+
+## Ministry of Education dictionary / Moedict
+
+In the Taiwan interface, the Chinese definition and Zhuyin come first from the Ministry of Education dictionary JSON published by [Moedict](https://www.moedict.tw/). The text is shown as published. It is not converted between scripts and the examples are not rewritten. The license is [CC BY-ND 3.0 TW](https://creativecommons.org/licenses/by-nd/3.0/tw/). The card links to the entry on Moedict.
+
+Hong Kong and mainland lookups do not call Moedict. A Hong Kong reading is a Wiktionary record marked Cantonese and Hong Kong. Converting a mainland or Taiwan entry to another script does not turn it into a Hong Kong entry.
+
+## OpenCC
+
+The extension vendors [opencc-js 1.4.2](https://github.com/nk2028/opencc-js), licensed MIT AND Apache-2.0. It converts the display spelling of Wiktionary text and the spelling used to search. Ministry of Education text does not pass through it. The font data and license copies are in `extension/shared/chinese-data/`.
 
 ## Free Dictionary API
 
