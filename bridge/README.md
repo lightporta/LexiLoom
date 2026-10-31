@@ -1,8 +1,10 @@
 # 官方词典本地桥接
 
+[English](README.en.md)
+
 这个可选服务让 Chrome 扩展通过本机访问 Oxford Dictionaries API 或 Cambridge Dictionary API。官方密钥只写入 `bridge/.env`，不写进扩展，不下发给网页。
 
-需要 Node.js 24。没有官方 API 授权时，可先使用扩展的示例词库或 Free Dictionary API 模式。
+需要 Node.js 24。没有官方 API 授权时，可先使用扩展的示例词库或 Free Dictionary API 模式。英文界面默认即使用 Free Dictionary，不请求中文维基接口。
 
 ## 启动
 

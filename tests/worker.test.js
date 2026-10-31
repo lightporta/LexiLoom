@@ -49,3 +49,31 @@ test('eight official lookups queue at most four bridge requests', async () => {
     assert.ok(results.every(result => result.status === 'not-found'));
   } finally { globalThis.fetch = oldFetch; stored = { ...stored, provider: 'demo' }; }
 });
+test('english interface looks up Free Dictionary and does not call Chinese Wiktionary', async () => {
+  chrome.i18n = { getUILanguage: () => 'en-US' };
+  stored = { enabled: true, provider: 'wiktionary', englishProvider: 'free', bridgeToken: stored.bridgeToken };
+  const calls = [];
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = async url => {
+    calls.push(String(url));
+    return Response.json([{ word: 'apple', phonetic: '/ˈæp.əl/', meanings: [{ partOfSpeech: 'noun', definitions: [{ definition: 'A round fruit.', example: 'She ate an apple.' }] }] }]);
+  };
+  try {
+    const result = await send({ type: 'LOOKUP', word: 'apple' });
+    assert.equal(result.status, 'ok');
+    assert.equal(result.meanings[0].definitions[0].definition, 'A round fruit.');
+    assert.ok(calls.some(url => url.includes('dictionaryapi.dev')));
+    assert.ok(calls.every(url => !url.includes('wiktapi')));
+  } finally {
+    globalThis.fetch = oldFetch;
+    delete chrome.i18n;
+    stored = { enabled: true, provider: 'demo', bridgeToken: stored.bridgeToken };
+  }
+});
+test('saving the english dictionary does not replace the chinese provider', async () => {
+  stored = { enabled: true, provider: 'wiktionary', englishProvider: 'free', bridgeToken: 'private-bridge-token-is-long-enough' };
+  assert.equal((await send({ type: 'SAVE_SETTINGS', settings: { enabled: true, englishProvider: 'demo', bridgeToken: stored.bridgeToken } }, options)).ok, true);
+  assert.equal(stored.provider, 'wiktionary');
+  assert.equal(stored.englishProvider, 'demo');
+  stored = { enabled: true, provider: 'demo', bridgeToken: stored.bridgeToken };
+});

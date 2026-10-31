@@ -14,7 +14,7 @@ const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 const context = await chromium.launchPersistentContext(profile, {
   headless: true, viewport: { width: 1280, height: 960 },
   channel: 'chromium',
-  args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`]
+  args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`, '--lang=zh-CN']
 });
 const report = { version: pkg.version, platform: process.platform, node: process.version, browser: context.browser()?.version(), checks: [], liveFree: null, liveWiktionary: null };
 const check = (name, value) => { assert.ok(value, name); report.checks.push(name); console.log(`PASS ${name}`); };

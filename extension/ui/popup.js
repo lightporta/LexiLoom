@@ -1,20 +1,26 @@
 'use strict';
-const names = { smart: '中文优先 · 自动回退', wiktionary: '中文维基词典 · WiktApi', free: 'Free Dictionary · 英英', demo: '本地双语演示', oxford: 'Oxford Dictionaries', cambridge: 'Cambridge Dictionary' };
-document.querySelector('#version').textContent = `v${chrome.runtime.getManifest().version} · 单词篇`;
+const t = (key, substitutions) => globalThis.LexiLoomI18n.t(key, substitutions);
+const english = globalThis.LexiLoomI18n.locale() === 'en';
+const names = { smart: 'providerSmart', wiktionary: 'providerWiktionary', free: 'providerFree', demo: 'providerDemo', oxford: 'providerOxford', cambridge: 'providerCambridge' };
+document.querySelector('#version').textContent = `v${chrome.runtime.getManifest().version} · ${t('versionWords')}`;
+document.querySelector('#provider').textContent = t('popupProviderLoading');
+if (english) document.querySelector('.brand-cn')?.remove();
 const enabled = document.querySelector('#enabled');
 const status = document.querySelector('#status');
-const showError = () => { status.textContent = '设置读取失败，请重新打开插件。'; status.dataset.error = 'true'; };
-chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }).then(settings => {
+const showError = () => { status.textContent = t('popupReadFailed'); status.dataset.error = 'true'; };
+chrome.runtime.sendMessage({ type: 'GET_PRIVATE_SETTINGS' }).then(settings => {
+  if (settings.error) throw new Error('read-failed');
   enabled.checked = settings.enabled;
-  document.querySelector('#provider').textContent = names[settings.provider] || '未选择';
+  const provider = globalThis.LexiLoomPresent.resolveLookupProvider(settings, globalThis.LexiLoomI18n.languageTag());
+  document.querySelector('#provider').textContent = t(names[provider]) || t('popupProviderUnset');
 }).catch(showError);
 enabled.addEventListener('change', async () => {
   enabled.disabled = true;
   try {
-    const settings = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
+    const settings = await chrome.runtime.sendMessage({ type: 'GET_PRIVATE_SETTINGS' });
     const result = await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: { ...settings, enabled: enabled.checked } });
     if (!result.ok) throw new Error('save-failed');
-    status.textContent = enabled.checked ? '已启用；已打开的网页也会生效。' : '已暂停；下次选词时生效。';
+    status.textContent = enabled.checked ? t('popupEnabledOn') : t('popupEnabledOff');
     status.dataset.error = 'false';
   } catch { showError(); } finally { enabled.disabled = false; }
 });

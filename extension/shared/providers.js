@@ -224,10 +224,16 @@ export async function lookupSmart(word, options = {}) {
   const chinese = await lookupWiktionary(word, options);
   if (chinese.status === 'ok') return chinese;
   const english = await lookupFree(word, options);
-  if (english.status === 'ok') return { ...english, notice: chinese.status === 'not-found' ? '中文词源暂无此词，已显示英英释义。' : '中文词源暂不可用，已显示英英释义。' };
+  if (english.status === 'ok') {
+    const missing = chinese.status === 'not-found';
+    return { ...english, noticeKey: missing ? 'noticeWiktMissing' : 'noticeWiktDown', notice: missing ? '中文词源暂无此词，已显示英英释义。' : '中文词源暂不可用，已显示英英释义。' };
+  }
   if (chinese.status === 'not-found' && english.status === 'not-found') return notFound(word, 'wiktionary');
-  if (chinese.status === 'error') return { ...chinese, notice: english.status === 'not-found' ? '英英词源也未收录；中文词源暂不可用，暂时无法确认此词。' : '中文和英英词源均暂不可用，请稍后重试。' };
-  return { ...english, notice: '中文词源暂无此词，英英词源暂不可用。' };
+  if (chinese.status === 'error') {
+    const absent = english.status === 'not-found';
+    return { ...chinese, noticeKey: absent ? 'noticeUnconfirmed' : 'noticeBothDown', notice: absent ? '英英词源也未收录；中文词源暂不可用，暂时无法确认此词。' : '中文和英英词源均暂不可用，请稍后重试。' };
+  }
+  return { ...english, noticeKey: 'noticeFreeDown', notice: '中文词源暂无此词，英英词源暂不可用。' };
 }
 
 function oxfordPronunciations(values) {

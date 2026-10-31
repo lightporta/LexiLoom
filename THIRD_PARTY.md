@@ -1,5 +1,7 @@
 # 数据来源与署名
 
+[English](THIRD_PARTY.en.md)
+
 ## 中文维基词典 / WiktApi
 
 中文释义由 [WiktApi](https://wiktapi.dev/quickstart) 提供结构化访问，数据来源为 [中文维基词典](https://zh.wiktionary.org/) 经 [Kaikki / Wiktextract](https://kaikki.org/) 等流程提取。WiktApi 是独立第三方服务，不是 Wikimedia、Oxford 或 Cambridge 官方服务。

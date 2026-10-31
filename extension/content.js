@@ -22,6 +22,25 @@
     options: () => runtime.sendMessage({ type: "OPEN_OPTIONS" }),
   };
 
+  const i18n = globalThis.LexiLoomI18n;
+  const present = globalThis.LexiLoomPresent;
+  const t = (key, substitutions) => i18n?.t(key, substitutions) || "";
+  const englishUi = () => i18n?.locale() === "en";
+  const errorText = result => {
+    const code = result?.error?.code;
+    const localized = code ? t(`error_${String(code).replaceAll("-", "_")}`) : "";
+    if (localized) return localized;
+    const message = text(result?.error?.message);
+    if (englishUi() && present?.hasCjk(message)) return t("error_generic");
+    return message || t("error_generic");
+  };
+  const noticeText = result => {
+    if (!englishUi()) return text(result?.notice);
+    if (result?.noticeKey) return t(result.noticeKey);
+    const notice = text(result?.notice);
+    return present?.hasCjk(notice) ? "" : notice;
+  };
+  const sourceName = source => t(`source_${source?.id || ""}`) || text(source?.name) || t("brandFallback");
   const POS = { noun: "名词", verb: "动词", adjective: "形容词", adverb: "副词", pronoun: "代词", preposition: "介词", conjunction: "连词", interjection: "感叹词", determiner: "限定词", exclamation: "感叹词", phrase: "短语" };
   let enabled = true;
   let host, shadow, panel, cardList, footer, count, panelObserver;
@@ -34,6 +53,7 @@
   let settingsVersion = 0;
 
   async function refreshSettings() {
+    await i18n?.ready;
     const version = ++settingsVersion;
     try {
       const settings = await bridge.settings();
@@ -157,7 +177,7 @@
   function setFooter(message) {
     if (!footer) return;
     footer.replaceChildren();
-    const help = element("span", "", "双击新词替换 · Ctrl / ⌘ + 双击追加");
+    const help = element("span", "", t("footerHelp"));
     footer.append(help);
     if (message) footer.append(element("span", "notice", message));
   }
@@ -172,15 +192,15 @@
     panel = element("section", "panel");
     panel.tabIndex = -1;
     panel.setAttribute("role", "dialog");
-    panel.setAttribute("aria-label", "语织单词释义");
+    panel.setAttribute("aria-label", t("cardAria"));
     const toolbar = element("header", "toolbar");
     const brand = element("div", "brand");
     brand.append(element("span", "brand-mark", "L"));
     const brandName = element("span", "brand-name", "LexiLoom");
-    brandName.append(element("span", "brand-cn", "语织"));
+    if (!englishUi()) brandName.append(element("span", "brand-cn", t("brandCn")));
     brand.append(brandName);
     count = element("span", "count");
-    const close = button("icon-button", "×", "退出查词（Esc）", () => closePanel(true));
+    const close = button("icon-button", "×", t("closeLookup"), () => closePanel(true));
     toolbar.append(brand, count, close);
     cardList = element("div", "cards");
     footer = element("footer", "footer");
@@ -213,7 +233,7 @@
     card.fold.setAttribute("aria-hidden", String(!card.open));
     card.fold.inert = !card.open;
     card.expandHint.textContent = card.open ? "−" : "+";
-    card.tapHint.textContent = card.open ? "点击收起" : "点击展开";
+    card.tapHint.textContent = card.open ? t("tapCollapse") : t("tapExpand");
     positionPanel();
   }
 
@@ -230,13 +250,13 @@
     expandHint.setAttribute("aria-hidden", "true");
     wordRow.append(element("span", "word", word), expandHint);
     const phonetic = element("span", "phonetic");
-    const summaryText = element("span", "summary-text loading", "正在翻开词典");
+    const summaryText = element("span", "summary-text loading", t("loading"));
     const meta = element("span", "summary-meta");
-    const sourceLabel = element("span", "source-label", "查询中");
-    const tapHint = element("span", "tap-hint", "点击展开");
+    const sourceLabel = element("span", "source-label", t("querying"));
+    const tapHint = element("span", "tap-hint", t("tapExpand"));
     meta.append(sourceLabel, tapHint);
     summary.append(wordRow, phonetic, summaryText, meta);
-    const remove = button("icon-button remove", "×", `移除 ${word}`, () => removeCard(word));
+    const remove = button("icon-button remove", "×", t("removeWord", [word]), () => removeCard(word));
     const lookupNotice = element("div", "lookup-notice");
     lookupNotice.hidden = true;
     const fold = element("div", "fold");
@@ -267,14 +287,14 @@
         currentAudio = new Audio(audio);
         await currentAudio.play();
         return;
-      } catch { node.textContent = "音频暂不可用，请使用系统朗读"; return; }
+      } catch { node.textContent = t("audioUnavailable"); return; }
     }
     if (!globalThis.speechSynthesis || !globalThis.SpeechSynthesisUtterance) {
-      node.textContent = "此浏览器暂不支持系统朗读";
+      node.textContent = t("speechUnsupported");
       return;
     }
     if (speechSynthesis.speaking || speechSynthesis.pending) {
-      node.textContent = "网页正在朗读，请稍后重试";
+      node.textContent = t("speechBusy");
       return;
     }
     const utterance = new SpeechSynthesisUtterance(word);
@@ -292,101 +312,113 @@
   function renderDetails(card, result) {
     card.details.replaceChildren(element("div", "divider"));
     const pronunciations = Array.isArray(result.pronunciations) ? result.pronunciations.slice(0, 4) : [];
-    card.details.append(element("div", "section-label", "PRONUNCIATION · 发音"));
+    card.details.append(element("div", "section-label", t("sectionPronunciation")));
     const pronunciationRow = element("div", "pronunciations");
     for (const pronunciation of pronunciations) {
       const hasAudio = Boolean(safeURL(pronunciation.audio));
-      const label = ["▷", text(pronunciation.label), text(pronunciation.phonetic), hasAudio ? "词典音频" : "系统朗读"].filter(Boolean).join("  ");
-      const node = button("pronunciation", label, `${card.word} · ${hasAudio ? "词典音频" : "系统朗读"}`, () => pronounce(card.word, pronunciation, node));
+      const audioLabel = hasAudio ? t("audioDictionary") : t("audioSystem");
+      const label = ["▷", text(pronunciation.label), text(pronunciation.phonetic), audioLabel].filter(Boolean).join("  ");
+      const node = button("pronunciation", label, `${card.word} · ${audioLabel}`, () => pronounce(card.word, pronunciation, node));
       pronunciationRow.append(node);
     }
     if (!pronunciations.length || pronunciations.every(item => safeURL(item.audio))) {
-      const system = { label: "系统朗读" };
-      const node = button("pronunciation", "▷ 系统朗读", `使用系统语音朗读 ${card.word}`, () => pronounce(card.word, system, node));
+      const system = { label: t("audioSystem") };
+      const node = button("pronunciation", `▷ ${t("audioSystem")}`, t("audioSystem"), () => pronounce(card.word, system, node));
       pronunciationRow.append(node);
     }
-    card.details.append(pronunciationRow, element("div", "section-label", "MEANING & USAGE · 释义与用法"));
+    card.details.append(pronunciationRow, element("div", "section-label", t("sectionMeaning")));
+    const english = englishUi();
     for (const meaning of (Array.isArray(result.meanings) ? result.meanings : []).slice(0, 12)) {
       const part = text(meaning.partOfSpeech);
-      card.details.append(element("div", "part-of-speech", [part, POS[part.toLowerCase()]].filter(Boolean).join(" · ")));
+      const gloss = english ? "" : POS[part.toLowerCase()];
+      if (part || gloss) card.details.append(element("div", "part-of-speech", [part, gloss].filter(Boolean).join(" · ")));
       const definitions = element("ol", "definitions");
       for (const definition of (Array.isArray(meaning.definitions) ? meaning.definitions : []).slice(0, 8)) {
         const item = element("li");
         item.append(element("p", "definition", text(definition.definition)));
-        if (definition.translation) item.append(element("p", "translation", text(definition.translation)));
+        if (!english && definition.translation) item.append(element("p", "translation", text(definition.translation)));
         for (const example of (Array.isArray(definition.examples) ? definition.examples : []).slice(0, 4)) {
           const exampleNode = element("blockquote", "example", text(example.text));
-          if (example.translation) exampleNode.append(element("div", "example-translation", text(example.translation)));
-          if (example.reference) exampleNode.append(element("cite", "source-note example-reference", text(example.reference)));
+          if (!english && example.translation) exampleNode.append(element("div", "example-translation", text(example.translation)));
+          if (!english && example.reference) exampleNode.append(element("cite", "source-note example-reference", text(example.reference)));
           item.append(exampleNode);
         }
-        if (definition.usage) item.append(element("div", "usage", `用法 · ${text(definition.usage)}`));
+        if (!english && definition.usage) item.append(element("div", "usage", t("usagePrefix", [text(definition.usage)])));
         definitions.append(item);
       }
       card.details.append(definitions);
-      const synonyms = (Array.isArray(meaning.synonyms) ? meaning.synonyms : []).filter(value => typeof value === "string").slice(0, 10);
-      if (synonyms.length) card.details.append(element("div", "synonyms", `近义词 · ${synonyms.join(" · ")}`));
+      const synonyms = english ? [] : (Array.isArray(meaning.synonyms) ? meaning.synonyms : []).filter(value => typeof value === "string").slice(0, 10);
+      if (synonyms.length) card.details.append(element("div", "synonyms", t("synonymsPrefix", [synonyms.join(" · ")])));
     }
+    if (result.noticeKey === "noticeNoEnglish") card.details.append(element("p", "definition", t("noticeNoEnglish")));
     if (!(result.meanings || []).some(meaning => (meaning.definitions || []).some(def => def.examples?.length))) {
-      card.details.append(element("div", "source-note", "当前词源未提供例句。"));
+      card.details.append(element("div", "source-note", t("noExamples")));
     }
     const entryFooter = element("div", "entry-footer");
     const href = safeURL(result.source?.url);
+    const name = sourceName(result.source);
     if (href) {
-      const link = element("a", "source-link", `${text(result.source?.name) || "词典"} · 打开来源 ↗`);
+      const link = element("a", "source-link", t("openSource", [name]));
       link.href = href; link.target = "_blank"; link.rel = "noopener noreferrer";
       entryFooter.append(link);
     }
-    if (result.source?.id === "demo") entryFooter.append(element("div", "source-note", "本地示例内容，用于体验交互；非牛津或剑桥词典数据。"));
-    if (result.source?.id === "free") entryFooter.append(element("div", "source-note", "Free Dictionary API · 英英释义；中文释义可选择“中文优先”或中文维基词典。"));
-    if (result.source?.name) entryFooter.append(element("div", "source-note", `词条来源：${text(result.source.name)}`));
-    if (result.source?.copyright) entryFooter.append(element("div", "source-note", text(result.source.copyright)));
+    if (result.source?.id === "demo") entryFooter.append(element("div", "source-note", t("sourceDemoNote")));
+    if (result.source?.id === "free") entryFooter.append(element("div", "source-note", t("sourceFreeNote")));
+    if (name) entryFooter.append(element("div", "source-note", t("sourceLine", [name])));
+    const copyright = text(result.source?.copyright);
+    if (copyright && !(english && present?.hasCjk(copyright))) entryFooter.append(element("div", "source-note", copyright));
     const licenseURL = safeURL(result.source?.license?.url);
     if (licenseURL) {
-      const license = element("a", "source-link source-license", text(result.source.license.name) || "来源许可");
+      const license = element("a", "source-link source-license", text(result.source.license.name) || t("sourceLicense"));
       license.href = licenseURL; license.target = "_blank"; license.rel = "noopener noreferrer";
       entryFooter.append(license);
     }
     for (const pronunciation of pronunciations) {
       const href = safeURL(pronunciation.attributionUrl);
       if (!href) continue;
-      const link = element("a", "source-link audio-attribution", `${text(pronunciation.label) || "音频"} · 文件与许可 ↗`);
+      const link = element("a", "source-link audio-attribution", t("audioLicense", [text(pronunciation.label) || t("audioFallback")]));
       link.href = href; link.target = "_blank"; link.rel = "noopener noreferrer";
       entryFooter.append(link);
     }
     card.details.append(entryFooter);
   }
 
-  function renderResult(card, result) {
+  function renderResult(card, raw) {
+    const result = present?.presentEntry(raw, englishUi() ? "en" : "zh-CN") || raw;
     card.article.setAttribute("aria-busy", "false");
-    card.lookupNotice.textContent = text(result.notice);
-    card.lookupNotice.hidden = !result.notice;
+    const notice = noticeText(result);
+    card.lookupNotice.textContent = notice;
+    card.lookupNotice.hidden = !notice;
     card.summaryText.classList.remove("loading");
     card.article.querySelector(".state-actions")?.remove();
     card.phonetic.textContent = text(result.phonetic) || text(result.pronunciations?.[0]?.phonetic);
-    card.sourceLabel.textContent = text(result.source?.name) || "语织";
+    card.sourceLabel.textContent = sourceName(result.source);
     if (result.status === "ok") {
       const first = result.meanings?.find(meaning => meaning.definitions?.length);
       const definition = first?.definitions?.[0];
-      card.summaryText.textContent = [POS[text(first?.partOfSpeech).toLowerCase()] || text(first?.partOfSpeech), text(definition?.translation) || text(definition?.definition)].filter(Boolean).join(" · ") || "词条已找到，点击查看详情";
+      const part = text(first?.partOfSpeech);
+      const gloss = englishUi() ? part : (POS[part.toLowerCase()] || part);
+      const meaningText = englishUi() ? text(definition?.definition) : (text(definition?.translation) || text(definition?.definition));
+      card.summaryText.textContent = [gloss, meaningText].filter(Boolean).join(" · ") || (result.noticeKey === "noticeNoEnglish" ? t("noticeNoEnglish") : t("foundPrompt"));
       renderDetails(card, result);
     } else {
-      card.summaryText.textContent = result.status === "not-found" ? "无法找到该单词" : text(result.error?.message) || "词典暂时无法连接，请重试";
-      card.details.replaceChildren(element("div", "divider"), element("p", "definition", result.status === "not-found" ? "请检查拼写，或在词典设置中切换其他来源。" : "请检查网络连接与词典设置后重试。"));
+      card.summaryText.textContent = result.status === "not-found" ? t("notFound") : errorText(result);
+      card.details.replaceChildren(element("div", "divider"), element("p", "definition", result.status === "not-found" ? t("notFoundHint") : t("errorRetryHint")));
       const actions = element("div", "state-actions");
-      if (result.status !== "not-found") actions.append(button("text-button", "重试", undefined, () => loadCard(card)));
-      actions.append(button("text-button", "词典设置 ↗", undefined, () => { void Promise.resolve(bridge.options()).catch(() => {}); }));
+      if (result.status !== "not-found") actions.append(button("text-button", t("retry"), undefined, () => loadCard(card)));
+      actions.append(button("text-button", t("openSettings"), undefined, () => { void Promise.resolve(bridge.options()).catch(() => {}); }));
       card.article.insertBefore(actions, card.fold);
     }
     requestAnimationFrame(positionPanel);
   }
 
   async function loadCard(card) {
+    await i18n?.ready;
     const lookupSession = session;
     const version = ++card.version;
     card.article.setAttribute("aria-busy", "true");
     card.summaryText.classList.add("loading");
-    card.summaryText.textContent = "正在翻开词典";
+    card.summaryText.textContent = t("loading");
     card.lookupNotice.hidden = true;
     try {
       const result = await bridge.lookup(card.word);
@@ -395,7 +427,7 @@
       renderResult(card, result);
     } catch {
       if (lookupSession !== session || cards.get(card.word) !== card || version !== card.version) return;
-      renderResult(card, { status: "error", error: { message: "词典连接失败；如刚更新插件，请刷新网页后重试。" } });
+      renderResult(card, { status: "error", error: { code: "connection_failed", message: "词典连接失败；如刚更新插件，请刷新网页后重试。" } });
     }
   }
 
@@ -413,7 +445,7 @@
       const card = makeCard(word);
       void loadCard(card);
     }
-    setFooter(truncated ? `一次最多查看 ${core.MAX_WORDS || 8} 个不同单词。` : undefined);
+    setFooter(truncated ? t("maxWords", [String(core.MAX_WORDS || 8)]) : undefined);
     positionPanel();
   }
 
@@ -421,13 +453,13 @@
     ensureHost();
     hideLauncher();
     launcherSnapshot = selection;
-    launcher = button("launcher", undefined, `查找选中的 ${selection.words.length} 个单词`, async () => {
+    launcher = button("launcher", undefined, t("lookupCount", [String(selection.words.length)]), async () => {
       const selected = launcherSnapshot;
       const selectionSession = session;
       await refreshSettings();
       if (enabled && selectionSession === session) showWords(selected);
     });
-    launcher.append(element("span", "launcher-brand", "L"), element("span", "", `查 ${selection.words.length} 词`), element("span", "", "↗"));
+    launcher.append(element("span", "launcher-brand", "L"), element("span", "", t("launcherCount", [String(selection.words.length)])), element("span", "", "↗"));
     launcher.addEventListener("pointerdown", event => { event.preventDefault(); event.stopPropagation(); });
     shadow.append(launcher);
     const size = launcher.getBoundingClientRect();

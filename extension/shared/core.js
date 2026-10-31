@@ -24,7 +24,7 @@
       return url.protocol === 'https:' && !url.username && !url.password ? url.href : '';
     } catch { return ''; }
   }
-  const DEFAULT_SETTINGS = Object.freeze({ enabled: true, provider: 'smart', bridgeToken: '' });
+  const DEFAULT_SETTINGS = Object.freeze({ enabled: true, provider: 'smart', englishProvider: 'free', bridgeToken: '' });
   function publicSettings(settings = {}) {
     return { enabled: settings.enabled !== false,
       provider: ['smart', 'wiktionary', 'demo', 'free', 'oxford', 'cambridge'].includes(settings.provider) ? settings.provider : 'smart' };

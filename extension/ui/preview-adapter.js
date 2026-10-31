@@ -8,6 +8,6 @@ window.__LEXILOOM_PREVIEW__ = {
   },
   openOptions: () => {
     if (globalThis.chrome?.runtime?.id) chrome.runtime.openOptionsPage();
-    else document.querySelector('#demo-hint').textContent = '这是本地交互预览。加载 extension 文件夹到 Chrome 后，可在插件中打开设置。';
+    else document.querySelector('#demo-hint').textContent = globalThis.LexiLoomI18n?.t('previewOptionsHint') || '';
   }
 };

@@ -1,5 +1,7 @@
 # Windows、Linux 与 macOS
 
+[English](CROSS_PLATFORM.en.md)
+
 LexiLoom 的 Chrome 扩展使用同一套 Manifest V3 源码。三个系统加载相同的 `extension` 文件夹，或解压同一个 `dist/LexiLoom-<版本>-chrome.zip` 后加载其中的插件文件夹。版本从 `package.json` 读取，无需维护三份插件。
 
 ## 安装 Chrome 扩展

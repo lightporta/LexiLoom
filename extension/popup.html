@@ -1,15 +1,17 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LexiLoom · 语织</title><link rel="stylesheet" href="ui/pages.css"></head>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title data-i18n="extName">LexiLoom · 语织</title><link rel="stylesheet" href="ui/pages.css"></head>
 <body class="popup">
-  <div class="brand"><img src="icons/icon48.png" alt=""><div class="brand-name">LexiLoom <span>语织</span></div></div>
-  <h1>让好奇，自然展开。</h1>
-  <p>双击一个单词，在阅读的地方理解它。</p>
+  <div class="brand"><img src="icons/icon48.png" alt=""><div class="brand-name">LexiLoom <span data-i18n="brandCn">语织</span></div></div>
+  <h1 data-i18n="popupHeading">让好奇，自然展开。</h1>
+  <p data-i18n="popupLead">双击一个单词，在阅读的地方理解它。</p>
   <div class="divider"></div>
-  <label class="switch-row"><span>启用网页查词</span><input class="switch" id="enabled" type="checkbox" checked aria-label="启用网页查词"></label>
-  <p class="muted" style="margin-top:12px">词典来源：<span id="provider">正在读取…</span></p>
-  <button class="primary" id="try">打开交互体验页 ↗</button>
-  <button class="secondary" id="options">词典与连接设置</button>
+  <label class="switch-row"><span data-i18n="popupEnable">启用网页查词</span><input class="switch" id="enabled" type="checkbox" checked data-i18n-aria="popupEnable" aria-label="启用网页查词"></label>
+  <p class="muted" style="margin-top:12px"><span data-i18n="popupProviderPrefix">词典来源：</span><span id="provider">正在读取…</span></p>
+  <button class="primary" id="try" data-i18n="popupTry">打开交互体验页 ↗</button>
+  <button class="secondary" id="options" data-i18n="popupOptions">词典与连接设置</button>
   <div class="status" role="status" id="status"></div>
   <footer><span class="muted" id="version"></span><span class="pill">READ · DISCOVER</span></footer>
+  <script src="shared/i18n.js"></script>
+  <script src="shared/present.js"></script>
   <script src="ui/popup.js"></script>
 </body></html>
