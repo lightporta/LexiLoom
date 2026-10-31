@@ -1,0 +1,14 @@
+{
+  "_fixtureNote": "Synthetic adapter test data, written for LexiLoom; not copied Oxford dictionary content.",
+  "results": [{"lexicalEntries": [{
+    "lexicalCategory": {"text": "Verb"},
+    "pronunciations": [{"dialects": ["British English"], "phoneticSpelling": "test", "audioFile": "https://audio.example.org/test.mp3"}],
+    "entries": [{"senses": [{
+      "definitions": ["An original test definition."],
+      "registers": [{"text": "formal"}],
+      "examples": [{"text": "This is an original adapter example."}],
+      "synonyms": [{"text": "check"}],
+      "subsenses": [{"definitions": ["An original subsidiary meaning."], "examples": []}]
+    }]}]
+  }]}]
+}

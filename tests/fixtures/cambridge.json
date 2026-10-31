@@ -1,0 +1,8 @@
+{
+  "_fixtureNote": "Synthetic HTML fixture matching documented entryContent and public dictionary class conventions; not a real licensed API response.",
+  "dictionaryCode": "synthetic-test",
+  "entryLabel": "test",
+  "entryUrl": "https://dictionary.cambridge.org/dictionary/english/test",
+  "format": "html",
+  "entryContent": "<div class=\"entry-body__el\"><span class=\"pos dpos\">noun</span><span class=\"uk dpron-i\"><span class=\"ipa dipa\">test</span><audio><source src=\"https://audio.example.org/test.mp3\"></audio></span><div class=\"def-block ddef_block\"><div class=\"def ddef_d db\">An original test definition &amp; an explanation.</div><span class=\"trans dtrans\">原创测试释义</span><span class=\"gram dgram\">[C]</span><div class=\"examp dexamp\"><span class=\"eg deg\">An original example for the adapter.</span><span class=\"trans dtrans\">适配器的原创例句。</span></div></div><div class=\"def-block ddef_block\"><div class=\"def ddef_d\">A second meaning.</div><span class=\"trans dtrans\">第二个释义</span></div></div><div class=\"copyright\">Synthetic fixture attribution.</div>"
+}

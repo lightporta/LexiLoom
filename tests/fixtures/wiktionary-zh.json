@@ -1,0 +1,17 @@
+{
+  "_fixtureNote": "Original synthetic Chinese adapter fixture using the observed WiktApi Chinese-edition schema; not a real dictionary entry.",
+  "word": "test",
+  "edition": "zh",
+  "entries": [{
+    "senses": [{
+      "glosses": ["原創測試詞義", "保留繁體原文"],
+      "tags": ["formal"],
+      "examples": [{ "text": "An original example for this test.", "ref": "LexiLoom synthetic fixture, 2026" }]
+    }],
+    "sounds": [
+      { "ipa": "/test/" },
+      { "audio": "En-us-test.ogg", "mp3_url": "https://upload.wikimedia.org/test.mp3", "raw_tags": ["（美国）音频"] },
+      { "ipa": "/test2/", "mp3_url": "javascript:alert(1)" }
+    ]
+  }]
+}

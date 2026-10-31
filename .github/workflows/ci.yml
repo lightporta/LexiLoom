@@ -1,0 +1,100 @@
+name: Cross-platform checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Node and Chromium / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked QA dependencies
+        run: npm ci
+      - name: Remove previous browser evidence
+        run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await Promise.all(['browser-validation.json','browser-single.png','browser-multi.png','browser-narrow.png','browser-wiktionary.png','reading-room.png','qa-failure.png'].map(name => rm('docs/' + name, { force:true })));"
+      - name: Node regression tests
+        run: npm test
+      - name: Check extension and scripts
+        run: npm run check
+      - name: Build the universal Chrome package
+        run: npm run package
+      - name: Install Chromium with Linux dependencies
+        if: runner.os == 'Linux'
+        run: npx --no-install playwright-core install --with-deps chromium
+      - name: Install Chromium
+        if: runner.os != 'Linux'
+        run: npx --no-install playwright-core install chromium
+      - name: Run actual Chromium extension checks
+        run: node tools/browser-qa.js
+      - name: Upload this platform's universal package
+        uses: actions/upload-artifact@v7
+        with:
+          name: chrome-${{ runner.os }}
+          path: dist/*-chrome.zip
+          if-no-files-found: error
+      - name: Upload browser evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-evidence-${{ runner.os }}
+          path: |
+            docs/browser-validation.json
+            docs/browser-*.png
+            docs/reading-room.png
+            docs/qa-failure.png
+          if-no-files-found: warn
+          retention-days: 14
+
+  compare-packages:
+    name: Compare universal ZIP bytes
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: chrome-*
+          path: packages
+      - name: Require identical ZIPs from all three operating systems
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile, readdir } from 'node:fs/promises';
+          import { join, basename } from 'node:path';
+          import { createHash } from 'node:crypto';
+          async function files(dir) {
+            const entries = await readdir(dir, { withFileTypes: true });
+            return (await Promise.all(entries.map(entry => entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]))).flat();
+          }
+          const archives = (await files('packages')).filter(file => file.endsWith('-chrome.zip')).sort();
+          assert.equal(archives.length, 3, 'Expected one package from each operating system');
+          const baseline = await readFile(archives[0]);
+          for (const archive of archives) {
+            const bytes = await readFile(archive);
+            assert.equal(basename(archive), basename(archives[0]), 'Package names differ across platforms');
+            assert.ok(bytes.equals(baseline), `Package bytes differ: ${archive}`);
+            console.log(`${createHash('sha256').update(bytes).digest('hex')}  ${archive}`);
+          }
+          NODE

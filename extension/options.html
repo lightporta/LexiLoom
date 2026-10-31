@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>词典设置 · LexiLoom</title><link rel="stylesheet" href="ui/pages.css"></head>
+<body><main class="settings-shell">
+  <header><div class="brand"><img src="icons/icon48.png" alt=""><div class="brand-name">LexiLoom <span>语织</span></div></div><a href="try.html" class="muted" target="_blank" rel="noopener">体验词卡 ↗</a></header>
+  <section class="settings-intro"><div class="eyebrow">A dictionary, your way</div><h1>选择你的词典。</h1><p>先让一个单词变得清晰，再把阅读织成自己的语言。</p></section>
+  <form id="settings-form">
+    <section class="settings-card">
+      <h2>网页查词</h2><label class="switch-row"><span>双击与划词查词</span><input id="enabled" class="switch" type="checkbox"></label>
+      <label class="field"><span>词典来源</span><select id="provider"><option value="smart">中文优先 · 维基词典 + 英英回退，无需密钥</option><option value="wiktionary">中文维基词典 · WiktApi，无需密钥</option><option value="free">Free Dictionary · 在线英英，无需密钥</option><option value="demo">本地双语演示 · 自编词条</option><option value="oxford">Oxford Dictionaries API · 需官方授权</option><option value="cambridge">Cambridge Dictionary API · 需官方授权</option></select></label>
+      <div class="source-note" id="source-note"></div>
+    </section>
+    <section class="settings-card" id="bridge-section" hidden>
+      <h2>连接本地词典服务</h2>
+      <p class="muted">官方词典密钥只填在项目的 bridge/.env 文件。这里填写服务连接口令，来自同一文件中的 BRIDGE_TOKEN。</p>
+      <label class="field"><span>本地服务连接口令</span><input id="bridge-token" type="password" autocomplete="off" spellcheck="false" maxlength="512"><small>连接固定地址 http://127.0.0.1:47821。口令只存储在本机插件中，不会同步到云端。</small></label>
+      <div class="actions"><button type="button" id="check-bridge" class="secondary">检查已保存的连接</button><button type="button" id="list-dictionaries" class="secondary">读取剑桥词典列表</button></div>
+      <div id="bridge-status" class="status" role="status"></div>
+      <div id="dictionary-list" class="source-note" hidden></div>
+      <p class="muted">启动方式和申请说明请看项目 README。剑桥可用的词典代码需通过服务的 /v1/dictionaries 查询，双语能力取决于账号授权的数据集。</p>
+    </section>
+    <div class="actions"><button class="primary" type="submit">保存设置</button><button class="secondary" type="button" id="restore">恢复默认</button></div>
+    <div id="save-status" class="status" role="status"></div>
+  </form>
+  <section class="settings-card"><h2>从一个词开始</h2><ol class="guide"><li>双击网页中的英文单词，出现紧凑词卡。</li><li>点击词卡展开释义、音标、用法和例句；再次点击词头收起。</li><li>拖选多个单词后，点击出现的“查词”按钮，生成相连的词卡。</li><li>按住 Ctrl / ⌘ 再双击其他单词可以追加，最多 8 个。</li><li>点击退出或按 Esc 关闭。Chrome 内部页、商店页、内置 PDF 阅读器不支持注入。</li></ol></section>
+  <footer class="settings-footer">只在主动查词时发送选中的词。不上传整页内容，不保存查词历史。中文释义来自中文维基词典，部分为繁体；英英回退和各来源会在词卡中注明。演示词库为自编内容。</footer>
+</main><script src="ui/options.js"></script></body></html>

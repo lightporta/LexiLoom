@@ -1,0 +1,17 @@
+{
+  "word": "serendipity",
+  "edition": "zh",
+  "entries": [{
+    "pos": "noun",
+    "senses": [{
+      "glosses": ["原创测试：意外发现的惊喜"],
+      "tags": ["uncountable"],
+      "examples": [{ "text": "This is an original example of a lucky discovery.", "translation": "这是原创测试例句。", "ref": "Original LexiLoom browser fixture; not copied from a dictionary." }]
+    }],
+    "sounds": [
+      { "ipa": "/test/" },
+      { "audio": "Synthetic-fixture.ogg", "mp3_url": "https://upload.wikimedia.org/synthetic-fixture.mp3", "raw_tags": ["测试音频"] }
+    ],
+    "forms": [{ "form": "serendipities", "tags": ["plural"] }]
+  }]
+}
