@@ -1,4 +1,44 @@
-# 0.3.1 验收记录
+# 验收记录
+
+## 0.4.0 · 2026-11-01
+
+在 0.3.1 基线上按仓库外 `LexiLoom-roadmap.md` 的 **G1（网址导向库，层 1 link-only）** 开发，并修复路线图缺陷“设置变更不刷新已打开词卡”（含其根因：内容脚本收不到受信存储的变更事件）。版本 0.3.1 → 0.4.0。
+
+### 本地检查
+
+环境为 macOS（Node.js 24.16.0，Chrome for Testing 156）。本轮所有检查在最终工作树重跑：
+
+| 命令或检查 | 结果 | 覆盖范围 |
+| --- | --- | --- |
+| `npm test` | 100 项通过 | 原有 87 项 + 导向库 11 项 + worker 导向保存与广播 2 项 |
+| `npm run check` | 通过（34 个扩展文件） | 语法、Manifest V3、资源引用、三语言目录键/占位符一致、版本、CSP、权限 |
+| `node tools/browser-qa.js` | 34 项通过 | 真实 Chromium：原有用例 + 导向外链结构与编码、选项页 15 个开关、关闭全部导向后已开卡片不关闭且外链消失、恢复后外链回来 |
+| `node tools/browser-ui-qa.js` | 10 项通过 | 英文界面英文词卡出现 Wiktionary/Oxford Learner's；繁体界面中文词卡出现萌典/中文維基詞典/漢典；另一窗口暂停查词会通过设置广播关闭已开卡片 |
+| `node tools/browser-locale-qa.js` | 4 组通过 | zh-CN、zh-HK、zh-TW、en-US 回归 |
+| `npm run package` | 两种 ZIP 通过 | `dist/LexiLoom-0.4.0-chrome.zip`（34 文件）与 `dist/LexiLoom-0.4.0-store.zip`；商店布局 manifest 在根目录 |
+
+### 本轮验证要点
+
+- 导向库按词头语言 + 词典地区 + 界面语言选择，最多 3 条外链；简体中文→汉典 hans、台湾→萌典、香港→粤典、繁体/香港→汉典 hant；英文界面只出英文站，中文界面查英文词才出有道/必应/剑桥英汉。外链 URL 中 `{word}` 一律 percent-encode。
+- 设置页可逐个关闭内置站（15 条）并添加自定义模板；`http://`、缺少 `{word}`、带账号密码、`javascript:` 模板均被拒绝；保存前 worker 二次清洗后再写入存储。
+- 实时刷新：worker 保存后向标签页广播 `SETTINGS_CHANGED`，内容脚本复用同一处理函数——仅导向变化只重建外链块，`provider`/`englishProvider`/`chineseRegion` 变化重新查词，`enabled:false` 关闭面板。真实 Chromium 已验证面板不关闭/关闭两条路径。原因：`chrome.storage.local.setAccessLevel('TRUSTED_CONTEXTS')` 让内容脚本既不能读存储、也收不到 `storage.onChanged`，旧的 storage 监听实际是死代码；广播不新增 `tabs` 权限。
+- 词卡正文来源不变；导向库只生成链接，不抓取、不转存第三方页面，`manifest` 仍只有 `storage` 与原有 4 个查词 host。
+- 未收录词条（`not-found`）的卡片也显示导向外链，作为“打开原站”兜底；`error` 卡片不显示。
+
+### 证据
+
+- [browser-validation.json](browser-validation.json)（34 项检查名）
+- `test-results/browser-ui/report.json`（10 项）、`test-results/browser-locales/report.json`（4 组）；这些目录不纳入版本控制，CI 会上传。
+- `dist/LexiLoom-0.4.0-chrome.zip`、`dist/LexiLoom-0.4.0-store.zip`（`dist/` 不纳入版本控制）。
+
+### 保留的限制
+
+- 导向库 URL 只做结构校验和少量 `curl` 抽查；抽查中部分站点对脚本请求返回 403/520（反爬），**未逐一在真实浏览器打开所有内置链接**。站点改版时应只改 `extension/shared/guidance.js` 一处。
+- 没有真实 Oxford/Cambridge 授权凭据联调；fixture 通过不代表官方 API 已连接。
+- 远程三平台 CI 需要在推送后另行确认；本地 macOS 的 Node 检查、真实 Chromium 检查与本机构建均通过。
+- macOS CI 加固提交 `a03a66c` 仍在 `cursor/harden-macos-browser-ci` 分支，`main` 尚未合并；本轮功能分支基于该提交，合并顺序由用户决定。
+
+## 0.3.1 验收记录
 
 日期：2026-11-01。基于用户提交 `c5301dd`，按仓库外的 `LexiLoom-roadmap.md` 做阶段 A 的查词底座整理和缺陷修正。该意见文件没有复制进仓库。
 

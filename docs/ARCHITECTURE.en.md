@@ -10,7 +10,8 @@ UI language, headword language and dictionary region are separate inputs. An Eng
 Selection → LanguageProfile detection and segmentation
           → DictionaryEngine adapter selection
           → DictionaryEntry validation
-          → CardView presentation policy → card
+          → CardView presentation policy
+          → optional LexiLoomGuidance links (link-only) → card
 ```
 
 - `extension/shared/languages.js` registers detection, segmentation, regions, reading systems, adapter selection and presentation policy. `core.js` and `locale.js` keep their existing entry points.
@@ -47,3 +48,37 @@ Settings saves are serialized partial updates. Only supplied fields change, so a
 Register a profile and adapter with a speech locale, sources and presentation policy. The card's expansion, grouping, removal and close behavior remains reusable. A hypothetical language in the contract tests verifies this extension point; it is not advertised as an additional shipped language.
 
 Languages sharing Latin script cannot be reliably distinguished by character shape alone. Supporting them will also need an explicit target-language choice or a suitable detection strategy.
+
+## Link directory (links, not fetches)
+
+`extension/shared/guidance.js` is the dictionary link directory. It only builds external links to dictionary sites; it never requests, parses or rehosts the destination page, so it is not a dictionary adapter. The background worker, the content script and the options page load the same module; the module itself makes no network request.
+
+### Contract
+
+```js
+globalThis.LexiLoomGuidance.resolve(entry, { uiLanguage, uiRegion, settings })
+```
+
+Returns at most three frozen link objects, selected by ascending `priority` with duplicate URLs removed:
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Built-in site id (such as `zh-wiktionary` or `en-oxford-learner`) or `custom-<number>` |
+| `name` / `nameTraditional` | Site name; a Traditional Chinese interface uses `nameTraditional` and falls back to `name` |
+| `url` | HTTPS address with `{word}` filled in and encoded |
+| `host` | Hostname of that address |
+| `custom` | Whether the entry comes from a user template |
+| `mode` | Always `"link-only"` |
+| `license` | Site license, or an empty string when none is declared (for example `CC BY-SA 4.0` or `CC BY-ND 3.0 TW`) |
+
+Matching: `entry.language` (`zh` / `en`) selects the language; `entry.region` filters sites that declare `regions`, falling back to `options.uiRegion` when the entry has no region; `options.uiLanguage` filters sites that declare `uiLanguages` as `en` / `zh`. Custom templates are language-neutral, have `priority` 0 and come before built-in sites.
+
+### Custom templates
+
+The format is `Name | https://…/{word}`, one per line, at most six; lines starting with `#` are ignored. `sanitize` validates again before saving: the template must start with `https://`, must contain `{word}`, must not contain other braces, the name is limited to 60 characters and the template to 300 characters. Entries that fail are dropped and not stored.
+
+### Settings and refresh
+
+`guidanceDisabled` (array of disabled built-in site ids) and `guidanceCustom` (array of `{ name, template }`) live in the `settings` key of `chrome.storage.local`. The worker writes them only after `sanitize`, and `GET_SETTINGS` sends the content script just the `publicSettings` result.
+
+The content script listens to `chrome.storage.onChanged` (the `settings` key). On a settings change it resolves and renders the links of cards that are already open; when `provider`, `englishProvider` or `chineseRegion` changes it looks the word up again. Open cards therefore do not wait for the next selection, and they do not keep showing the previous source's text after a source change.

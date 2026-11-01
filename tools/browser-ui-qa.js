@@ -77,6 +77,13 @@ for (const tag of ['en-US', 'zh-TW']) {
       assert.ok(await harness.panel('.details', 'return this.querySelectorAll(".source-license").length>=2'));
       checks.push('Combined Chinese and English corpora retain their separate licenses');
       await harness.page.screenshot({ path: join(directory, `${tag}-attribution.png`) });
+      await select(harness, 'serendipity');
+      await harness.panel('.summary', 'this.click()');
+      await harness.waitForPanel('.summary', 'return this.getAttribute("aria-expanded")==="true"');
+      const englishGuidance = await harness.panel('.card', 'return [...this.querySelectorAll(".guidance-link")].map(link => link.textContent)');
+      assert.ok(englishGuidance.length >= 1 && englishGuidance.length <= 3, JSON.stringify(englishGuidance));
+      assert.ok(englishGuidance.some(name => /Wiktionary|Oxford Learner/.test(name)), JSON.stringify(englishGuidance));
+      checks.push('English-interface English card shows international dictionary guidance links');
       await harness.options.evaluate(() => chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: { chineseRegion: 'CN' } }));
       await select(harness, '干');
       const notice = await harness.panel('.lookup-notice', 'return this.hidden ? "" : this.textContent');
@@ -104,6 +111,20 @@ for (const tag of ['en-US', 'zh-TW']) {
       assert.equal(settings.chineseRegion, 'HK');
       checks.push('A delayed popup toggle preserves a region saved by another window');
       await popup.close();
+      // The delayed popup save disables lookup. The worker broadcasts the public
+      // settings to open tabs, so the already-open panel must close instead of
+      // staying on screen (defect 6 fix), then be re-openable after re-enabling.
+      let closedAfterDisable = false;
+      for (let attempt = 0; attempt < 80; attempt++) {
+        if (await harness.panel('.panel', 'return true') === null) { closedAfterDisable = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      assert.ok(closedAfterDisable, 'open panel should close when lookup is disabled by another window');
+      checks.push('Disabling lookup in another window closes the open card through the settings broadcast');
+      await harness.options.evaluate(() => chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: { enabled: true } }));
+      await select(harness, 'serendipity');
+      await harness.panel('.summary', 'this.click()');
+      await harness.waitForPanel('.summary', 'return this.getAttribute("aria-expanded")==="true"');
     } else {
       await harness.page.locator('#serendipity').dblclick();
       await harness.waitForPanel('.summary-text', 'return !this.classList.contains("loading")');
@@ -111,6 +132,13 @@ for (const tag of ['en-US', 'zh-TW']) {
       assert.match(await harness.panel('.part-of-speech', 'return this.textContent'), /名詞/);
       assert.doesNotMatch(await harness.panel('.part-of-speech', 'return this.textContent'), /名词/);
       checks.push('Traditional Chinese UI uses Traditional part-of-speech labels');
+      await select(harness, '學習');
+      await harness.panel('.summary', 'this.click()');
+      await harness.waitForPanel('.summary', 'return this.getAttribute("aria-expanded")==="true"');
+      const chineseGuidance = await harness.panel('.card', 'return [...this.querySelectorAll(".guidance-link")].map(link => link.textContent)');
+      assert.ok(chineseGuidance.length >= 1 && chineseGuidance.length <= 3, JSON.stringify(chineseGuidance));
+      assert.ok(chineseGuidance.some(name => /萌典|中文維基詞典|漢典/.test(name)), JSON.stringify(chineseGuidance));
+      checks.push('Traditional Chinese interface shows Chinese dictionary guidance links');
     }
     assert.deepEqual(harness.errors, []);
     await harness.waitForPanel('.panel', 'return this.getAnimations({subtree:true}).length===0');

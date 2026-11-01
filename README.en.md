@@ -57,6 +57,19 @@ Chinese words follow the region:
 
 Source links, example references and license links stay at the bottom of the card. Coverage differs by dictionary. Attribution is in [THIRD_PARTY.en.md](THIRD_PARTY.en.md). A lookup sends the word you selected. It does not upload the page or keep a history. See [Privacy](PRIVACY.en.md).
 
+## Dictionary link directory
+
+An expanded card lists up to three dictionary links you can open. They are chosen by headword language, dictionary region and interface language. They take you to the dictionary site and do not replace the card's own source:
+
+- Chinese headwords: Chinese Wiktionary, Han Dian (汉典), Moedict, Words.hk (粤典), Youdao, Baidu Hanyu.
+- English headwords: Wiktionary, Oxford Learner's Dictionaries, Cambridge, Merriam-Webster, Youdao, Bing Dictionary, Cambridge English–Chinese.
+
+Region and interface language filter the list. A Hong Kong headword prefers Words.hk and the Traditional Han Dian entry, a Taiwan headword prefers Moedict, and a mainland headword prefers the simplified Han Dian entry. Youdao, Bing and Cambridge English–Chinese can appear when a Chinese interface looks up an English word; an English interface keeps English-only sites. At most three links are taken by priority, so disabling a site or adding a custom template changes the result.
+
+Settings can turn each built-in site off. You can also add custom templates as `Name | https://…/{word}`: HTTPS only, `{word}` required, at most six. The background worker validates and sanitizes them before they are stored.
+
+The directory only generates links. The extension does not fetch or rehost those pages, and it adds no host permissions for them: the manifest still lists only local storage and the same four lookup hosts. Opening a link takes you to the destination site's own content and policies. Card content always comes from the sources in "Where the words come from"; these links are extra entry points.
+
 ## Development
 
 Node.js 22 or newer. The extension loads on its own and includes OpenCC. The local service and packager need no npm runtime dependencies. Playwright is for the browser tests.

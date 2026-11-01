@@ -571,5 +571,38 @@
   },
   "source_wiktionary_en_zh": {
     "message": "English Wiktionary · WiktApi"
+  },
+  "guidanceSection": {
+    "message": "MORE · Open in a dictionary"
+  },
+  "guidanceOpen": {
+    "message": "$1 ↗"
+  },
+  "guidanceHeading": {
+    "message": "Dictionary link directory"
+  },
+  "guidanceLead": {
+    "message": "Pick credited dictionary links by headword language and region. The extension only creates links; it never fetches or rehosts those pages."
+  },
+  "guidanceBuiltinHelp": {
+    "message": "Matched by language and region. Enabled sites appear at the bottom of a card, at most three at a time."
+  },
+  "guidanceGroupEn": {
+    "message": "English headwords"
+  },
+  "guidanceGroupZh": {
+    "message": "Chinese headwords"
+  },
+  "guidanceCustomLabel": {
+    "message": "Custom link templates"
+  },
+  "guidanceCustomHelp": {
+    "message": "One per line: name | https://example.com/word/{word}. HTTPS and the {word} placeholder are required; up to six."
+  },
+  "guidanceCustomPlaceholder": {
+    "message": "My dictionary | https://example.com/word/{word}"
+  },
+  "guidanceInvalid": {
+    "message": "Invalid custom template on line $1: $2."
   }
 }

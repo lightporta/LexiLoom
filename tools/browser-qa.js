@@ -140,6 +140,10 @@ try {
   await page.keyboard.press('Escape');
   const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
   await options.locator('button[type="submit"]').waitFor();
+  await options.locator('#guidance-groups input[data-guidance-id]').first().waitFor();
+  const builtinIds = await worker.evaluate(() => globalThis.LexiLoomGuidance.builtinIds());
+  const guidanceOptionIds = await options.evaluate(() => [...document.querySelectorAll('#guidance-groups input[data-guidance-id]')].map(input => input.dataset.guidanceId));
+  check('options page renders one checkbox per built-in dictionary link', guidanceOptionIds.length === builtinIds.length && builtinIds.every(id => guidanceOptionIds.includes(id)), JSON.stringify({ rendered: guidanceOptionIds.length, builtin: builtinIds.length }));
   check('options page shows the Chinese save button', (await options.locator('button[type="submit"]').innerText()).includes('保存设置'));
   await options.locator('#provider').selectOption('demo'); await options.locator('button[type="submit"]').click();
   await options.locator('#save-status').filter({hasText: savedText}).waitFor();
@@ -160,9 +164,29 @@ try {
   check('Chinese-first mode renders Chinese definitions through the background', (await panelValue('.summary-text','return this.textContent')).includes('原创测试'));
   await panelValue('.summary','this.click()'); await pause(340);
   check('dictionary card retains its source, license and examples', await panelValue('.details', 'return !!this.querySelector(".source-license") && !!this.querySelector(".example-reference") && this.textContent.includes("WiktApi")'));
+  const guidance = await panelValue('.card', 'return (() => { const block = this.querySelector(".guidance"); const links = [...(block ? block.querySelectorAll(".guidance-link") : [])]; return { expanded: !!this.querySelector("[aria-expanded=true]"), present: !!block, count: links.length, names: links.map(link => link.textContent), hrefs: links.map(link => link.getAttribute("href")) }; })()');
+  check('expanded card shows one to three credited dictionary guidance links', guidance.expanded && guidance.present && guidance.count >= 1 && guidance.count <= 3, JSON.stringify(guidance));
+  check('guidance link hrefs are https URLs with no unencoded whitespace', guidance.hrefs.every(href => typeof href === 'string' && href.startsWith('https://') && !/\s/.test(href)), JSON.stringify(guidance.hrefs));
+  check('zh-CN interface lists 有道词典 for the demo English headword', guidance.names.some(name => name.includes('有道词典')), JSON.stringify(guidance.names));
   const requests = await worker.evaluate(()=>globalThis.__LEXILOOM_QA_REQUESTS__);
   check('Chinese UI lookup requests Chinese Wiktionary', requests.length === 1 && requests[0].includes('api.wiktapi.dev/'));
   await page.screenshot({path:join(docs,'browser-wiktionary.png')});
+  const openCardCount = await panelValue('.cards', 'return this.children.length');
+  const readGuidanceState = () => panelValue('.panel', 'return { cards: this.querySelectorAll(".card").length, links: [...this.querySelectorAll(".card .guidance-link")].map(link => link.textContent) }');
+  await options.evaluate(async ids => {
+    const response = await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: { enabled: true, guidanceDisabled: ids } });
+    if (!response.ok) throw new Error('saving disabled guidance failed');
+  }, builtinIds);
+  let hiddenState;
+  for (let attempt = 0; attempt < 120; attempt++) { hiddenState = await readGuidanceState(); if (hiddenState && !hiddenState.links.length) break; await pause(50); }
+  check('disabling every site hides open-card guidance without closing the panel', Boolean(hiddenState) && hiddenState.cards === openCardCount && hiddenState.links.length === 0, JSON.stringify(hiddenState));
+  await options.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: { guidanceDisabled: [] } });
+    if (!response.ok) throw new Error('restoring guidance settings failed');
+  });
+  let restoredState;
+  for (let attempt = 0; attempt < 120; attempt++) { restoredState = await readGuidanceState(); if (restoredState && restoredState.links.length) break; await pause(50); }
+  check('restoring guidance settings brings the links back on the same open card', Boolean(restoredState) && restoredState.cards === openCardCount && restoredState.links.length >= 1 && restoredState.links.length <= 3, JSON.stringify(restoredState));
   await page.keyboard.press('Escape');
   const freeFixture = [{meanings:[{partOfSpeech:'noun',definitions:[{definition:'An original fallback dictionary definition.'}]}]}];
   await worker.evaluate(payload => { globalThis.fetch=async (url,init)=>String(url).startsWith('chrome-extension://')?globalThis.__LEXILOOM_QA_FETCH__(url,init):String(url).includes('wiktapi.dev')?new Response('{}',{status:404}):Response.json(payload); }, freeFixture);

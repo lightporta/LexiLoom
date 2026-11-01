@@ -19,9 +19,10 @@
       <div id="dictionary-list" class="source-note" hidden></div>
       <p class="muted" data-i18n="bridgeDocs">启动方式和申请说明请看项目 README。剑桥可用的词典代码需通过服务的 /v1/dictionaries 查询，双语能力取决于账号授权的数据集。</p>
     </section>
+    <section class="settings-card"><h2 data-i18n="guidanceHeading"></h2><p class="muted" data-i18n="guidanceLead"></p><div id="guidance-groups"></div><p class="muted" data-i18n="guidanceBuiltinHelp"></p><label class="field"><span data-i18n="guidanceCustomLabel"></span><textarea id="guidance-custom" rows="4" spellcheck="false" maxlength="6000" data-i18n-placeholder="guidanceCustomPlaceholder"></textarea><small data-i18n="guidanceCustomHelp"></small></label><div id="guidance-status" class="status" role="status"></div></section>
     <div class="actions"><button class="primary" type="submit" data-i18n="save">保存设置</button><button class="secondary" type="button" id="restore" data-i18n="restore">恢复默认</button></div>
     <div id="save-status" class="status" role="status"></div>
   </form>
   <section class="settings-card"><h2 data-i18n="guideHeading">从一个词开始</h2><ol class="guide"><li data-i18n="guide1">双击网页中的英文单词，出现紧凑词卡。</li><li data-i18n="guide2">点击词卡展开释义、音标、用法和例句；再次点击词头收起。</li><li data-i18n="guide3">拖选多个单词后，点击出现的“查词”按钮，生成相连的词卡。</li><li data-i18n="guide4">按住 Ctrl / ⌘ 再双击其他单词可以追加，最多 8 个。</li><li data-i18n="guide5">点击退出或按 Esc 关闭。Chrome 内部页、商店页、内置 PDF 阅读器不支持注入。</li></ol></section>
   <footer class="settings-footer" data-i18n="settingsFooter">只在主动查词时发送选中的词。不上传整页内容，不保存查词历史。中文释义来自中文维基词典，部分为繁体；英英回退和各来源会在词卡中注明。演示词库为自编内容。</footer>
-</main><script src="shared/languages.js"></script><script src="shared/locale.js"></script><script src="shared/core.js"></script><script src="shared/entry.js"></script><script src="shared/i18n.js"></script><script src="shared/present.js"></script><script src="ui/options.js"></script></body></html>
+</main><script src="shared/languages.js"></script><script src="shared/locale.js"></script><script src="shared/guidance.js"></script><script src="shared/core.js"></script><script src="shared/entry.js"></script><script src="shared/i18n.js"></script><script src="shared/present.js"></script><script src="ui/options.js"></script></body></html>

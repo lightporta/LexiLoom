@@ -43,6 +43,7 @@
   };
   const sourceName = source => t(`source_${String(source?.id || '').replaceAll('-', '_')}`) || text(source?.name) || t("brandFallback");
   let enabled = true;
+  let settings = normalizeSettings();
   let host, shadow, panel, cardList, footer, count, panelObserver;
   let launcher, launcherSnapshot, selectionTimer;
   let anchor = null, anchorRange = null, anchorSide = null, previousFocus = null;
@@ -52,13 +53,40 @@
   let currentUtterance = null;
   let settingsVersion = 0;
 
+  // The content script only mirrors public lookup and guidance settings. The
+  // bridge token never reaches web pages, and storage merges are reduced to this
+  // shape so a settings save cannot leak private fields into the panel.
+  function normalizeSettings(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const guidance = source.guidance && typeof source.guidance === "object" ? source.guidance : {};
+    const disabled = Array.isArray(source.guidanceDisabled) ? source.guidanceDisabled : Array.isArray(guidance.disabled) ? guidance.disabled : [];
+    const custom = Array.isArray(source.guidanceCustom) ? source.guidanceCustom : Array.isArray(guidance.custom) ? guidance.custom : [];
+    return {
+      enabled: source.enabled !== false,
+      provider: typeof source.provider === "string" ? source.provider : "smart",
+      englishProvider: typeof source.englishProvider === "string" ? source.englishProvider : "free",
+      chineseRegion: typeof source.chineseRegion === "string" ? source.chineseRegion : "auto",
+      guidance: {
+        disabled: disabled.filter(id => typeof id === "string"),
+        custom: custom.filter(item => item && typeof item === "object" && typeof item.name === "string" && typeof item.template === "string")
+          .map(item => ({ name: item.name, template: item.template }))
+      }
+    };
+  }
+
+  function applySettings(value) {
+    settings = normalizeSettings(value && typeof value === "object" ? { ...settings, ...value } : undefined);
+    enabled = settings.enabled;
+    return settings;
+  }
+
   async function refreshSettings() {
     await i18n?.ready;
     const version = ++settingsVersion;
     try {
-      const settings = await bridge.settings();
+      const next = await bridge.settings();
       if (version === settingsVersion) {
-        enabled = settings?.enabled !== false;
+        applySettings(next);
         if (!enabled) closePanel();
       }
     } catch { /* LOOKUP reports an invalidated extension context with an actionable error. */ }
@@ -315,6 +343,46 @@
     speechSynthesis.speak(utterance);
   }
 
+  const guidanceLinks = view => {
+    const guidance = globalThis.LexiLoomGuidance;
+    const locale = globalThis.LexiLoomLocale;
+    const entry = view?.entry;
+    // A missing headword still gets links ("open the original site" fallback);
+    // only transport/schema errors must stay free of third-party links.
+    if (!guidance || !locale?.profile || !entry || (entry.status !== "ok" && entry.status !== "not-found")) return null;
+    const uiLanguage = i18n?.languageTag() || "zh-CN";
+    const profile = locale.profile(uiLanguage, settings.chineseRegion);
+    if (!profile) return null;
+    const links = guidance.resolve(entry, { uiLanguage, uiRegion: profile.region, settings });
+    return Array.isArray(links) && links.length ? { links, traditional: Boolean(profile.traditional) } : null;
+  };
+
+  // Guidance links live at the end of the expanded card. Re-rendering this block
+  // alone keeps a settings change cheap: no lookup, no panel close, and a card
+  // stays usable even when every link is turned off.
+  function renderGuidance(card) {
+    card.details.querySelector(".guidance")?.remove();
+    const resolved = guidanceLinks(card.view);
+    if (!resolved) return;
+    const block = element("div", "guidance");
+    block.append(element("div", "section-label", t("guidanceSection")));
+    const list = element("div", "guidance-links");
+    for (const link of resolved.links.slice(0, 3)) {
+      const href = safeURL(link.url);
+      if (!href) continue;
+      const name = globalThis.LexiLoomGuidance.displayName(link, resolved.traditional);
+      const anchor = element("a", "guidance-link", t("guidanceOpen", [name]));
+      anchor.href = href;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.title = link.url;
+      list.append(anchor);
+    }
+    if (!list.childElementCount) return;
+    block.append(list);
+    card.details.append(block);
+  }
+
   function renderDetails(card, view) {
     const result = view.entry;
     card.details.replaceChildren(element("div", "divider"));
@@ -411,10 +479,14 @@
       entryFooter.append(link);
     }
     card.details.append(entryFooter);
+    renderGuidance(card);
   }
 
   function renderResult(card, raw) {
     const view = present.createCardView({ word: card.word, ...raw }, i18n?.languageTag() || 'zh-CN');
+    // Keep the projection so a settings change can rebuild the guidance block
+    // without another lookup or a full card render.
+    card.view = view;
     const result = view.entry;
     card.wordLabel.textContent = text(result.displayWord) || card.word;
     card.article.setAttribute("aria-busy", "false");
@@ -433,6 +505,7 @@
     } else {
       card.summaryText.textContent = result.status === "not-found" ? t(view.notFoundKey) : errorText(result);
       card.details.replaceChildren(element("div", "divider"), element("p", "definition", result.status === "not-found" ? t("notFoundHint") : t("errorRetryHint")));
+      if (result.status === "not-found") renderGuidance(card);
       const actions = element("div", "state-actions");
       if (result.status !== "not-found") actions.append(button("text-button", t("retry"), undefined, () => loadCard(card)));
       actions.append(button("text-button", t("openSettings"), undefined, () => { void Promise.resolve(bridge.options()).catch(() => {}); }));
@@ -534,12 +607,38 @@
   }, true);
   window.addEventListener("resize", () => { hideLauncher(); positionPanel(); }, { passive: true });
   window.addEventListener("scroll", () => { hideLauncher(); positionPanel(); }, { passive: true, capture: true });
-  if (runtime?.id && chrome.storage?.onChanged) chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
-    if (changes.settings) {
-      settingsVersion += 1;
-      enabled = changes.settings.newValue?.enabled !== false;
-      if (!enabled) closePanel();
+  // Applies a newer settings snapshot to the panel that is already open. A
+  // source switch needs a fresh lookup for the cards on show; a guidance-only
+  // edit just rebuilds their link block. The panel itself stays open unless the
+  // extension was disabled, in which case no card may remain on the page.
+  function handleSettingsChange(value) {
+    // Bumping the version keeps a late GET_SETTINGS response from overwriting
+    // the newer snapshot, whichever transport delivered it.
+    settingsVersion += 1;
+    const previous = settings;
+    applySettings(value);
+    if (!enabled) { closePanel(); return; }
+    const sourceChanged = ["provider", "englishProvider", "chineseRegion"].some(key => previous[key] !== settings[key]);
+    const guidanceChanged = JSON.stringify(previous.guidance) !== JSON.stringify(settings.guidance);
+    if (!sourceChanged && !guidanceChanged) return;
+    for (const card of cards.values()) {
+      if (sourceChanged) void loadCard(card);
+      else renderGuidance(card);
     }
+    if (!sourceChanged) requestAnimationFrame(positionPanel);
+  }
+
+  // Two transports feed the panel. The native storage event carries the full
+  // private settings object (reduced to the public shape by applySettings), but
+  // the worker restricts the storage area to trusted contexts, so it also
+  // broadcasts the public snapshot to tabs. The version guard keeps a late
+  // GET_SETTINGS response from overwriting either newer signal.
+  if (runtime?.id && chrome.storage?.onChanged) chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.settings) return;
+    handleSettingsChange(changes.settings.newValue);
+  });
+  if (runtime?.id && runtime.onMessage) runtime.onMessage.addListener((message, sender) => {
+    if (sender?.id !== runtime.id || message?.type !== "SETTINGS_CHANGED" || !message.settings) return;
+    handleSettingsChange(message.settings);
   });
 })();

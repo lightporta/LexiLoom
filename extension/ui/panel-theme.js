@@ -109,6 +109,13 @@ globalThis.LexiLoomTheme = `
   .usage { font-size: 12px; color: #75826f; margin-top: 8px; line-height: 1.7; }
   .synonyms { color: #75826f; font-size: 11px; line-height: 1.7; margin-top: 10px; }
   .entry-footer { border-top: 1px dashed var(--ll-line); padding-top: 11px; margin-top: 14px; }
+  .guidance { border-top: 1px dashed var(--ll-line); margin-top: 14px; padding-top: 11px; }
+  .guidance-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .guidance-link {
+    border: 1px solid #dce4d7; background: #f3f6ee; border-radius: 6px;
+    padding: 4px 9px; font-size: 11px; color: var(--ll-green); text-decoration: none;
+  }
+  .guidance-link:hover { background: #e8efdf; }
   .source-link { color: var(--ll-green); font-size: 11px; text-decoration: none; }
   .source-link:hover { text-decoration: underline; }
   .source-note { color: #657460; font-size: 11px; line-height: 1.6; margin-top: 5px; }

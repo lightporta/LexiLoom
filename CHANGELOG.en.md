@@ -2,6 +2,14 @@
 
 [中文](CHANGELOG.md)
 
+## 0.4.0 · 2026-11-01
+
+- Added the dictionary link directory (layer 1, link-only). An expanded card lists up to three external dictionary links chosen by interface language, dictionary region and headword language. Chinese headwords cover Chinese Wiktionary, Han Dian, Moedict, Words.hk, Youdao and Baidu Hanyu; English headwords cover Wiktionary, Oxford Learner's Dictionaries, Cambridge, Merriam-Webster, Youdao, Bing Dictionary and Cambridge English–Chinese. The version moves from 0.3.1 to 0.4.0.
+- Settings can turn built-in sites off one by one and add custom templates as `Name | https://…/{word}`: HTTPS required, `{word}` required, at most six. The background worker validates and sanitizes them before storing.
+- Open cards refresh their links as soon as settings change; when the dictionary source (`provider`, `englishProvider`) or the Chinese region changes they look the word up again. This fixes the roadmap defect where settings changes did not refresh open cards.
+- The directory only generates links. It does not fetch or rehost third-party pages and adds no host permissions. Card content still comes from the existing sources; these links are extra entry points.
+- Still no vocabulary notebook, review, or general-purpose crawler.
+
 ## 0.3.1 · 2026-11-01
 
 - Language profiles, dictionary adapters and cards now share one entry contract. UI language and headword language remain separate; combined requests share four slots until their response bodies finish downloading.
