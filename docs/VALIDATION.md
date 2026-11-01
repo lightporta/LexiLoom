@@ -35,8 +35,8 @@
 
 - 导向库 URL 只做结构校验和少量 `curl` 抽查；抽查中部分站点对脚本请求返回 403/520（反爬），**未逐一在真实浏览器打开所有内置链接**。站点改版时应只改 `extension/shared/guidance.js` 一处。
 - 没有真实 Oxford/Cambridge 授权凭据联调；fixture 通过不代表官方 API 已连接。
-- 远程三平台 CI 需要在推送后另行确认；本地 macOS 的 Node 检查、真实 Chromium 检查与本机构建均通过。
-- macOS CI 加固提交 `a03a66c` 仍在 `cursor/harden-macos-browser-ci` 分支，`main` 尚未合并；本轮功能分支基于该提交，合并顺序由用户决定。
+- 远程三平台 CI 已随分支推送触发，最终结果以 GitHub Actions 为准；本地 macOS 的 Node 检查、真实 Chromium 检查与本机构建均通过。
+- 远程 `origin/main` 已通过 PR #1 合并 macOS CI 加固（`c00f2a2`，run 41309664616 成功）；本轮功能分支基于 `a03a66c`，已推送 `origin/feat/guidance-directory`，是否合并由用户决定。
 
 ## 0.3.1 验收记录
 
