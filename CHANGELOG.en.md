@@ -10,6 +10,7 @@
 - Settings saves update only the supplied fields, preserving pause state and preferences changed in another window.
 - Packaging writes both the unpacked-extension layout and a store layout with the manifest at its root. Added UI regressions and current validation notes.
 - Fixed a macOS CI animation sampling false failure by checking the real transition timeline, retaining linear expansion assertions and adding renderer-stall and reduced-motion regressions.
+- Hardened browser QA further: force `prefers-reduced-motion: no-preference` through Playwright and CDP on runners, wait for lookup completion by card busy/loading state (`browser-lookup-wait.js`), and include animation probe details on failure.
 
 ## 0.3.0 · 2026-10-31
 

@@ -7,22 +7,34 @@ export async function probeExpansion({ stallMs = 0 } = {}) {
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   this.querySelector('.summary').click();
   const afterClick = width(); // Flush the new style to create the transition.
-  const transition = this.getAnimations().find(animation => animation.transitionProperty === 'width');
-  if (!transition) return { collapsed, expanded: afterClick, reducedMotion, samples: [], duration: null };
+  const transition = this.getAnimations({ subtree: false })
+    .find(animation => animation.transitionProperty === 'width' || animation.transitionProperty === 'all');
+  if (!transition) {
+    return {
+      collapsed, expanded: afterClick, reducedMotion, samples: [], duration: null, easing: null, stallMs,
+      reason: reducedMotion ? 'reduced-motion' : 'missing-width-transition'
+    };
+  }
 
   // Capture and pause in this same task, before the runner can skip frames.
   transition.pause();
-  const { duration, easing } = transition.effect.getTiming();
+  const timing = transition.effect.getTiming();
+  const duration = Number(timing.duration);
+  const easing = timing.easing;
   const stallStart = performance.now();
   while (performance.now() - stallStart < stallMs) { /* Deliberate QA-only dropped-frame regression. */ }
   const samples = [0.25, 0.5, 0.75].map(progress => {
-    transition.currentTime = Number(duration) * progress;
+    transition.currentTime = duration * progress;
     return { progress, width: width() };
   });
   // Let the remaining transition complete naturally; no fixed frame deadline.
   transition.play();
   await transition.finished;
-  await Promise.all(this.getAnimations({ subtree: true }).map(animation => animation.finished));
+  const finite = this.getAnimations({ subtree: true }).filter(animation => {
+    const total = Number(animation.effect?.getTiming?.().duration);
+    return Number.isFinite(total) && total < 10_000 && animation.playState !== 'idle';
+  });
+  await Promise.all(finite.map(animation => animation.finished.catch(() => {})));
   return { collapsed, samples, expanded: width(), duration, easing, reducedMotion, stallMs };
 }
 

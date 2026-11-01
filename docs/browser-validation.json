@@ -1,11 +1,12 @@
 {
   "version": "0.3.1",
   "platform": "darwin",
-  "node": "v22.23.4",
+  "node": "v24.16.0",
   "browser": "156.0.8078.4",
   "checks": [
     "service worker UI language is isolated as zh-CN",
     "unpacked MV3 extension loads and double-click returns a Chinese demo card",
+    "animation suite starts with reduced-motion disabled",
     "280ms linear expansion interpolates at 25%, 50% and 75% and completes",
     "expansion timeline remains testable after a 500ms renderer stall",
     "expanded card exposes example and pronunciation",
@@ -36,6 +37,7 @@
   "liveWiktionary": null,
   "uiLanguage": "zh-CN",
   "localeMode": "shimmed chrome.i18n.getUILanguage",
+  "motionPreference": false,
   "animation": {
     "collapsed": 312,
     "samples": [
@@ -85,6 +87,9 @@
     "expanded": 424,
     "reducedMotion": true,
     "samples": [],
-    "duration": null
+    "duration": null,
+    "easing": null,
+    "stallMs": 0,
+    "reason": "reduced-motion"
   }
 }
