@@ -58,14 +58,23 @@ export async function openLocaleHarness(chromium, tag, { blockNetwork = true } =
     await options.goto(`chrome-extension://${extensionId}/options.html`);
     await options.evaluate(async () => { await globalThis.LexiLoomI18n.ready; });
     const page = await context.newPage();
+    // GitHub macOS runners can inherit OS "Reduce motion". Context options are not
+    // always enough for later media checks, so force the feature on every page.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     const errors = [];
-    context.on('page', candidate => candidate.on('pageerror', error => errors.push(error.message)));
+    context.on('page', candidate => {
+      candidate.on('pageerror', error => errors.push(error.message));
+      candidate.on('load', () => { void candidate.emulateMedia({ reducedMotion: 'no-preference' }); });
+    });
     page.on('pageerror', error => errors.push(error.message));
     const html = await readFile(join(root, 'tests/fixtures/reading.html'), 'utf8');
     await context.route('http://locale.lexiloom.test/**', route => route.fulfill({ contentType: 'text/html', body: html }));
     await page.goto('http://locale.lexiloom.test/');
     const cdp = await context.newCDPSession(page);
     await cdp.send('DOM.enable');
+    await cdp.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }]
+    });
     function find(node, predicate) {
       if (predicate(node)) return node;
       for (const child of [...(node.children || []), ...(node.shadowRoots || [])]) {

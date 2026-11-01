@@ -42,6 +42,8 @@
 
 **以上修复已完成本机验证，修复提交的远程三平台 CI 需要在用户推送后另行确认。** 不能把旧提交的通过记录当作本次修复的远程验收。
 
+后续观察：`2ecc536` 在 Ubuntu / Windows 通过后，macOS 仍在「Run actual Chromium extension checks」失败。本机 macOS 连跑浏览器 QA 可通过。继续加固：强制关闭 runner 继承的 Reduce Motion、按词卡状态等待查词完成，并在断言失败时输出动画探测 JSON。仍须以推送后的三平台 Actions 结果为准。
+
 ## 保留的限制
 
 - Oxford / Cambridge 没有真实授权凭据联调证据；fixture 通过不代表官方 API 已连接。

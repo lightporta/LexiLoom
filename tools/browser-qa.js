@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { openLocaleHarness } from './browser-test-harness.js';
 import { probeExpansion, hasLinearExpansion } from './browser-animation-probe.js';
+import { waitForLookupState } from './browser-lookup-wait.js';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const docs = join(root, 'docs'); await mkdir(docs, { recursive: true });
@@ -16,7 +17,11 @@ const catalog = JSON.parse(await readFile(join(root, 'extension/_locales/zh_CN/m
 const savedText = catalog.saved.message;
 const notFoundText = catalog.notFound.message;
 const report = { version: pkg.version, platform: process.platform, node: process.version, browser: '', checks: [], liveFree: null, liveWiktionary: null, uiLanguage: 'zh-CN', localeMode: 'shimmed chrome.i18n.getUILanguage' };
-const check = (name, value) => { assert.ok(value, name); report.checks.push(name); console.log(`PASS ${name}`); };
+const check = (name, value, detail = '') => {
+  assert.ok(value, detail ? `${name}: ${detail}` : name);
+  report.checks.push(name);
+  console.log(`PASS ${name}`);
+};
 let harness;
 try {
   harness = await openLocaleHarness(chromium, 'zh-CN', { blockNetwork: false });
@@ -38,6 +43,10 @@ try {
   });
   const cdp = await context.newCDPSession(page);
   await cdp.send('DOM.enable');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await cdp.send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }]
+  });
   function find(node, predicate) {
     if (predicate(node)) return node;
     for (const child of [...(node.children || []), ...(node.shadowRoots || [])]) { const value = find(child, predicate); if (value) return value; }
@@ -58,31 +67,48 @@ try {
   }
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   async function waitPanel(selector = '.panel') {
-    for(let n=0;n<40;n++){ if(await panelValue(selector,'return true')) return; await pause(50); }
+    for (let n = 0; n < 80; n++) { if (await panelValue(selector, 'return true')) return; await pause(50); }
     throw new Error(`Missing ${selector}`);
   }
-  async function ready() {
-    for(let n=0;n<40;n++){ if(await panelValue('.cards','return this.querySelectorAll("[aria-busy=true]").length === 0')) return; await pause(50); }
-    throw new Error('Lookup did not finish');
+  async function readLookupState() {
+    return panelValue('.panel', `return (() => {
+      const cards = [...this.querySelectorAll('.card')].map(card => ({
+        word: card.querySelector('.word')?.textContent || '',
+        busy: card.getAttribute('aria-busy') === 'true',
+        loading: !!card.querySelector('.summary-text.loading')
+      }));
+      return { cards };
+    })()`);
   }
-  await page.locator('#serendipity').dblclick(); await waitPanel(); await ready();
+  async function ready(words) {
+    return waitForLookupState(readLookupState, words, { timeoutMs: 15000, pollIntervalMs: 50 });
+  }
+  async function forceMotion(preference) {
+    await page.emulateMedia({ reducedMotion: preference });
+    await cdp.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: preference === 'reduce' ? 'reduce' : 'no-preference' }]
+    });
+  }
+  await page.locator('#serendipity').dblclick(); await waitPanel(); await ready(['serendipity']);
   console.log('First card:', await panelValue('.summary-text','return this.textContent'));
   check('unpacked MV3 extension loads and double-click returns a Chinese demo card', (await panelValue('.summary-text','return this.textContent')).includes('意外'));
+  report.motionPreference = await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  check('animation suite starts with reduced-motion disabled', report.motionPreference === false, JSON.stringify(report.motionPreference));
   report.animation = await panelValue('.panel', `return (${probeExpansion.toString()}).call(this)`);
   console.log('Expansion timeline:', JSON.stringify(report.animation));
-  check('280ms linear expansion interpolates at 25%, 50% and 75% and completes', hasLinearExpansion(report.animation));
+  check('280ms linear expansion interpolates at 25%, 50% and 75% and completes', hasLinearExpansion(report.animation), JSON.stringify(report.animation));
   await panelValue('.summary', 'this.click()');
-  await harness.waitForPanel('.panel', 'return this.getAnimations({subtree:true}).length === 0 && Math.abs(this.getBoundingClientRect().width - 312) < .5');
+  await harness.waitForPanel('.panel', 'return Math.abs(this.getBoundingClientRect().width - 312) < .5');
   report.stalledAnimation = await panelValue('.panel', `return (${probeExpansion.toString()}).call(this, {stallMs: 500})`);
-  check('expansion timeline remains testable after a 500ms renderer stall', hasLinearExpansion(report.stalledAnimation));
+  check('expansion timeline remains testable after a 500ms renderer stall', hasLinearExpansion(report.stalledAnimation), JSON.stringify(report.stalledAnimation));
   check('expanded card exposes example and pronunciation', await panelValue('.details','return !!this.querySelector(".example") && !!this.querySelector(".pronunciation")'));
   check('Chinese card retains translation and usage', await panelValue('.details', 'return !!this.querySelector(".translation") && !!this.querySelector(".usage")'));
   await page.screenshot({ path: join(docs,'browser-single.png') });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await forceMotion('reduce');
   await panelValue('.summary', 'this.click()');
   report.reducedMotion = await panelValue('.panel', `return (${probeExpansion.toString()}).call(this)`);
-  check('reduced-motion preference expands immediately without a width transition', report.reducedMotion.reducedMotion && report.reducedMotion.duration === null && Math.abs(report.reducedMotion.expanded - 424) < .5);
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  check('reduced-motion preference expands immediately without a width transition', report.reducedMotion.reducedMotion && report.reducedMotion.duration === null && Math.abs(report.reducedMotion.expanded - 424) < .5, JSON.stringify(report.reducedMotion));
+  await forceMotion('no-preference');
   await page.keyboard.press('Escape');
   check('Escape closes panel', !await panelValue('.panel','return true'));
   await page.locator('#input').dblclick(); await pause(300);
@@ -92,7 +118,7 @@ try {
   const multiBox = await page.locator('#multi').boundingBox();
   await page.mouse.move(multiBox.x+multiBox.width-1,multiBox.y+15); await page.mouse.up();
   await waitPanel('.launcher');
-  await panelValue('.launcher','this.click()'); await waitPanel(); await ready();
+  await panelValue('.launcher','this.click()'); await waitPanel(); await ready(['luminous', 'ephemeral', 'serendipity']);
   check('multi-selection creates three connected cards', await panelValue('.cards','return this.children.length === 3'));
   await panelValue('.card:nth-child(1) .summary','this.click()');
   await panelValue('.card:nth-child(3) .summary','this.click()'); await pause(330);
@@ -101,15 +127,14 @@ try {
   await panelValue('.card:nth-child(2) .remove','this.click()');
   check('individual card removal keeps chain open', await panelValue('.cards','return this.children.length === 2'));
   await page.locator('#append').dblclick({ modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'] });
-  for(let n=0;n<30;n++){if(await panelValue('.cards','return this.children.length === 3'))break;await pause(50);}
-  await ready();
+  await ready(['luminous', 'serendipity', 'curiosity']);
   check('Ctrl / Command + double-click appends a word', await panelValue('.cards','return this.children.length === 3 && this.textContent.includes("curiosity")'));
   await page.mouse.click(20,20); check('outside click closes cards', !await panelValue('.panel','return true'));
-  await page.locator('#bottom').dblclick(); await ready(); await panelValue('.summary','this.click()'); await pause(340);
+  await page.locator('#bottom').dblclick(); await ready(['luminous']); await panelValue('.summary','this.click()'); await pause(340);
   check('expanded card stays inside viewport at bottom-right selection', await panelValue('.panel','const r=this.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight'));
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator('#curiosity').dblclick(); await ready(); await panelValue('.summary','this.click()'); await pause(340);
+  await page.locator('#curiosity').dblclick(); await ready(['curiosity']); await panelValue('.summary','this.click()'); await pause(340);
   check('expanded card fits a 390px viewport', await panelValue('.panel','const r=this.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth'));
   await page.screenshot({ path: join(docs,'browser-narrow.png') });
   await page.keyboard.press('Escape');
@@ -131,7 +156,7 @@ try {
   await worker.evaluate(payload => { globalThis.__LEXILOOM_QA_REQUESTS__=[];globalThis.fetch=async (url,init)=>{if(String(url).startsWith('chrome-extension://'))return globalThis.__LEXILOOM_QA_FETCH__(url,init);globalThis.__LEXILOOM_QA_REQUESTS__.push(String(url));return Response.json(payload);}; }, wikiFixture);
   await options.evaluate(()=>chrome.runtime.sendMessage({type:'SAVE_SETTINGS',settings:{enabled:true,provider:'smart',englishProvider:'free'}}));
   await page.setViewportSize({width:1280,height:960}); await page.bringToFront();
-  await page.locator('#serendipity').dblclick(); await waitPanel(); await ready();
+  await page.locator('#serendipity').dblclick(); await waitPanel(); await ready(['serendipity']);
   check('Chinese-first mode renders Chinese definitions through the background', (await panelValue('.summary-text','return this.textContent')).includes('原创测试'));
   await panelValue('.summary','this.click()'); await pause(340);
   check('dictionary card retains its source, license and examples', await panelValue('.details', 'return !!this.querySelector(".source-license") && !!this.querySelector(".example-reference") && this.textContent.includes("WiktApi")'));
@@ -141,7 +166,7 @@ try {
   await page.keyboard.press('Escape');
   const freeFixture = [{meanings:[{partOfSpeech:'noun',definitions:[{definition:'An original fallback dictionary definition.'}]}]}];
   await worker.evaluate(payload => { globalThis.fetch=async (url,init)=>String(url).startsWith('chrome-extension://')?globalThis.__LEXILOOM_QA_FETCH__(url,init):String(url).includes('wiktapi.dev')?new Response('{}',{status:404}):Response.json(payload); }, freeFixture);
-  await page.locator('#serendipity').dblclick(); await waitPanel(); await ready();
+  await page.locator('#serendipity').dblclick(); await waitPanel(); await ready(['serendipity']);
   check('English fallback is labelled with its actual source and visible reason', await panelValue('.card', 'return this.textContent.includes("Free Dictionary") && !this.querySelector(".lookup-notice").hidden'));
   await page.keyboard.press('Escape');
   await options.evaluate(()=>chrome.runtime.sendMessage({type:'SAVE_SETTINGS',settings:{enabled:true,provider:'free'}}));
@@ -149,7 +174,7 @@ try {
   await worker.evaluate(() => { globalThis.fetch = async (url,init) => { if(String(url).startsWith('chrome-extension://'))return globalThis.__LEXILOOM_QA_FETCH__(url,init);await new Promise(resolve=>setTimeout(resolve,250)); return new Response('{}',{status:404,headers:{'Content-Type':'application/json'}}); }; });
   await page.setViewportSize({width:1280,height:960});
   await page.bringToFront();
-  await page.locator('#missing').dblclick({position:{x:20,y:20}}); await waitPanel(); await ready();
+  await page.locator('#missing').dblclick({position:{x:20,y:20}}); await waitPanel(); await ready(['qzxqzxqz']);
   const missingText = await panelValue('.summary-text','return this.textContent');
   check('a confirmed HTTP 404 shows the Chinese no-word text', missingText === notFoundText);
   await page.keyboard.press('Escape');
