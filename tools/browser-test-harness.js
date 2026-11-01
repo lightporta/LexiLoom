@@ -35,7 +35,10 @@ export async function openLocaleHarness(chromium, tag, { blockNetwork = true } =
   try {
     context = await chromium.launchPersistentContext(join(temporary, 'profile'), {
       channel: 'chromium', headless: true, viewport: { width: 1280, height: 960 },
-      locale: tag, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`]
+      // Animation assertions must not inherit the runner OS accessibility setting.
+      // The browser suite also explicitly checks reduced-motion behavior.
+      locale: tag, reducedMotion: 'no-preference',
+      args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`]
     });
     const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', { timeout: 15000 });
     const extensionId = new URL(worker.url()).host;

@@ -9,6 +9,7 @@
 - Fixed hidden Chinese attribution and notices in the English UI, and Simplified part-of-speech labels in the Traditional UI. System speech follows the reading's explicit locale.
 - Settings saves update only the supplied fields, preserving pause state and preferences changed in another window.
 - Packaging writes both the unpacked-extension layout and a store layout with the manifest at its root. Added UI regressions and current validation notes.
+- Fixed a macOS CI animation sampling false failure by checking the real transition timeline, retaining linear expansion assertions and adding renderer-stall and reduced-motion regressions.
 
 ## 0.3.0 · 2026-10-31
 

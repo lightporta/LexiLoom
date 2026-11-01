@@ -1,14 +1,16 @@
 {
   "version": "0.3.1",
   "platform": "darwin",
-  "node": "v24.16.0",
+  "node": "v22.23.4",
   "browser": "156.0.8078.4",
   "checks": [
     "service worker UI language is isolated as zh-CN",
     "unpacked MV3 extension loads and double-click returns a Chinese demo card",
-    "280ms expansion has an intermediate width and completes",
+    "280ms linear expansion interpolates at 25%, 50% and 75% and completes",
+    "expansion timeline remains testable after a 500ms renderer stall",
     "expanded card exposes example and pronunciation",
     "Chinese card retains translation and usage",
+    "reduced-motion preference expands immediately without a width transition",
     "Escape closes panel",
     "editable input does not trigger lookup",
     "multi-selection creates three connected cards",
@@ -33,5 +35,56 @@
   "liveFree": null,
   "liveWiktionary": null,
   "uiLanguage": "zh-CN",
-  "localeMode": "shimmed chrome.i18n.getUILanguage"
+  "localeMode": "shimmed chrome.i18n.getUILanguage",
+  "animation": {
+    "collapsed": 312,
+    "samples": [
+      {
+        "progress": 0.25,
+        "width": 340
+      },
+      {
+        "progress": 0.5,
+        "width": 368
+      },
+      {
+        "progress": 0.75,
+        "width": 396
+      }
+    ],
+    "expanded": 424,
+    "duration": 280,
+    "easing": "linear",
+    "reducedMotion": false,
+    "stallMs": 0
+  },
+  "stalledAnimation": {
+    "collapsed": 312,
+    "samples": [
+      {
+        "progress": 0.25,
+        "width": 340
+      },
+      {
+        "progress": 0.5,
+        "width": 368
+      },
+      {
+        "progress": 0.75,
+        "width": 396
+      }
+    ],
+    "expanded": 424,
+    "duration": 280,
+    "easing": "linear",
+    "reducedMotion": false,
+    "stallMs": 500
+  },
+  "reducedMotion": {
+    "collapsed": 312,
+    "expanded": 424,
+    "reducedMotion": true,
+    "samples": [],
+    "duration": null
+  }
 }
