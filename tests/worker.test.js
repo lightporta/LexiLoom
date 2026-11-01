@@ -19,7 +19,7 @@ const options = { id: chrome.runtime.id, url: `chrome-extension://${chrome.runti
 function send(message, sender = site) { return new Promise(resolve => handler(message, sender, resolve)); }
 test('worker restricts storage and content-facing settings', async () => {
   assert.deepEqual(access, { accessLevel: 'TRUSTED_CONTEXTS' });
-  assert.deepEqual(await send({ type: 'GET_SETTINGS' }), { enabled: true, provider: 'demo', chineseRegion: 'auto' });
+  assert.deepEqual(await send({ type: 'GET_SETTINGS' }), { enabled: true, provider: 'demo', chineseRegion: 'auto', guidance: { disabled: [], custom: [] } });
   assert.equal((await send({ type: 'GET_PRIVATE_SETTINGS' })).error, 'unauthorized');
   assert.equal((await send({ type: 'SAVE_SETTINGS', settings: { provider: 'oxford' } })).error, 'unauthorized');
 });
@@ -133,4 +133,59 @@ test('catalog requests cannot access a non-catalog extension path', async () => 
   globalThis.fetch = async () => { throw new Error('No network request should occur for an invalid catalog.'); };
   try { assert.equal((await send({ type: 'GET_CATALOG', catalog: '../../bridge/.env' })).error, 'invalid-catalog'); }
   finally { globalThis.fetch = oldFetch; }
+});
+test('options page saves sanitized guidance preferences and content clients never see the token', async () => {
+  stored = { enabled: true, provider: 'demo', chineseRegion: 'auto', bridgeToken: 'private-bridge-token-is-long-enough' };
+  const saved = await send({ type: 'SAVE_SETTINGS', settings: {
+    enabled: true, provider: 'demo',
+    guidanceDisabled: ['en-wiktionary', 'bogus', 'zh-youdao'],
+    guidanceCustom: [
+      { name: '我的词典', template: 'https://example.com/w/{word}' },
+      { name: 'Bad scheme', template: 'http://example.com/{word}' },
+      { name: 'No placeholder', template: 'https://example.com/fixed' }
+    ]
+  } }, options);
+  assert.deepEqual(saved, { ok: true });
+  // Unknown ids and invalid templates are dropped before persisting.
+  assert.deepEqual(stored.guidanceDisabled, ['en-wiktionary', 'zh-youdao']);
+  assert.deepEqual(stored.guidanceCustom, [{ name: '我的词典', template: 'https://example.com/w/{word}' }]);
+  assert.equal(stored.enabled, true);
+  assert.equal(stored.provider, 'demo');
+  // Saving only custom templates preserves the disabled ids and other fields.
+  assert.deepEqual(await send({ type: 'SAVE_SETTINGS', settings: { guidanceCustom: [] } }, options), { ok: true });
+  assert.deepEqual(stored.guidanceDisabled, ['en-wiktionary', 'zh-youdao']);
+  assert.deepEqual(stored.guidanceCustom, []);
+  assert.equal(stored.enabled, true);
+  assert.equal(stored.provider, 'demo');
+  // The content-facing shape carries resolved guidance state but not the token.
+  const settings = await send({ type: 'GET_SETTINGS' });
+  assert.deepEqual(settings, {
+    enabled: true, chineseRegion: 'auto', provider: 'demo',
+    guidance: { disabled: ['en-wiktionary', 'zh-youdao'], custom: [] }
+  });
+  assert.ok(!JSON.stringify(settings).includes('private-bridge-token'));
+  stored = { enabled: true, provider: 'demo', bridgeToken: 'private-bridge-token-is-long-enough' };
+});
+test('a settings save broadcasts public settings to content scripts without the bridge token', async () => {
+  const sent = [];
+  const oldTabs = chrome.tabs;
+  chrome.tabs = {
+    query: async () => [{ id: 11 }, { id: 12 }, { id: undefined }],
+    sendMessage: async (id, message) => {
+      sent.push({ id, message });
+      if (id === 12) throw new Error('No receiver for this tab.');
+    }
+  };
+  try {
+    stored = { enabled: true, provider: 'demo', englishProvider: 'demo', chineseRegion: 'auto', bridgeToken: 'private-bridge-token-is-long-enough' };
+    assert.deepEqual(await send({ type: 'SAVE_SETTINGS', settings: { guidanceDisabled: ['zh-youdao'] } }, options), { ok: true });
+    assert.deepEqual(sent.map(item => item.id), [11, 12]);
+    const message = sent[0].message;
+    assert.equal(message.type, 'SETTINGS_CHANGED');
+    assert.deepEqual(message.settings, {
+      enabled: true, chineseRegion: 'auto', provider: 'demo', englishProvider: 'demo',
+      guidance: { disabled: ['zh-youdao'], custom: [] }
+    });
+    assert.ok(!JSON.stringify(message).includes('private-bridge-token'));
+  } finally { chrome.tabs = oldTabs; }
 });

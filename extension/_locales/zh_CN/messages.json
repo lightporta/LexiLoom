@@ -571,5 +571,38 @@
   },
   "source_wiktionary_en_zh": {
     "message": "英文维基词典 · WiktApi"
+  },
+  "guidanceSection": {
+    "message": "拓展查询 · 在词典站查看"
+  },
+  "guidanceOpen": {
+    "message": "$1 ↗"
+  },
+  "guidanceHeading": {
+    "message": "网址导向库"
+  },
+  "guidanceLead": {
+    "message": "按词条语言与地区挑选可署名的词典站外链。插件只生成链接，不抓取、不转存这些网站的正文。"
+  },
+  "guidanceBuiltinHelp": {
+    "message": "按当前语言与地区自动匹配；启用的站点会显示在词卡底部，每次最多 3 个。"
+  },
+  "guidanceGroupEn": {
+    "message": "英文词条"
+  },
+  "guidanceGroupZh": {
+    "message": "中文字词"
+  },
+  "guidanceCustomLabel": {
+    "message": "自定义链接模板"
+  },
+  "guidanceCustomHelp": {
+    "message": "每行一个：名称 | https://词典站路径/{word}。必须使用 HTTPS 并包含 {word} 占位符；最多 6 条。"
+  },
+  "guidanceCustomPlaceholder": {
+    "message": "我的词典 | https://example.com/word/{word}"
+  },
+  "guidanceInvalid": {
+    "message": "自定义模板无效：第 $1 行“$2”。"
   }
 }

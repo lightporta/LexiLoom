@@ -1,5 +1,6 @@
 import '../shared/languages.js';
 import '../shared/locale.js';
+import '../shared/guidance.js';
 import '../shared/core.js';
 import '../shared/present.js';
 import '../shared/demo-data.js';
@@ -65,6 +66,24 @@ function isExtensionPage(sender) {
 let pending = 0;
 const catalogs = new Map();
 let settingsWrites = Promise.resolve();
+// Content scripts cannot read chrome.storage directly because storage access is
+// limited to trusted contexts. Push the public settings shape to open tabs after
+// every save so an already-open word card can refresh without a page reload.
+function broadcastSettings(settings) {
+  const message = {
+    type: 'SETTINGS_CHANGED',
+    settings: {
+      ...publicSettings(settings),
+      englishProvider: settings.englishProvider,
+      guidance: globalThis.LexiLoomGuidance.publicSettings(settings)
+    }
+  };
+  const tabs = chrome.tabs && chrome.tabs.query ? chrome.tabs.query({}) : Promise.resolve([]);
+  return tabs.then(list => Promise.all((list || [])
+    .filter(tab => typeof tab.id === 'number')
+    .map(tab => chrome.tabs.sendMessage(tab.id, message).catch(() => {}))))
+    .catch(() => {});
+}
 function saveSettings(incoming) {
   const operation = settingsWrites.then(async () => {
     const next = { ...await getSettings() };
@@ -73,7 +92,16 @@ function saveSettings(incoming) {
     if (globalThis.LexiLoomLanguages.PROVIDERS.includes(incoming.provider)) next.provider = incoming.provider;
     if (globalThis.LexiLoomLanguages.ENGLISH_PROVIDERS.includes(incoming.englishProvider)) next.englishProvider = incoming.englishProvider;
     if (['auto', 'CN', 'HK', 'TW'].includes(incoming.chineseRegion)) next.chineseRegion = incoming.chineseRegion;
+    if (Array.isArray(incoming.guidanceDisabled) || Array.isArray(incoming.guidanceCustom)) {
+      const guidance = globalThis.LexiLoomGuidance.sanitize({
+        guidanceDisabled: Array.isArray(incoming.guidanceDisabled) ? incoming.guidanceDisabled : next.guidanceDisabled,
+        guidanceCustom: Array.isArray(incoming.guidanceCustom) ? incoming.guidanceCustom : next.guidanceCustom
+      });
+      next.guidanceDisabled = guidance.disabled;
+      next.guidanceCustom = guidance.custom;
+    }
     await chrome.storage.local.set({ settings: next });
+    await broadcastSettings(next);
     return { ok: true };
   });
   settingsWrites = operation.catch(() => {});
@@ -96,7 +124,11 @@ async function getCatalog(name) {
 }
 async function handle(message, sender) {
   if (sender.id !== chrome.runtime.id) return { error: 'unauthorized' };
-  if (message.type === 'GET_SETTINGS') return publicSettings(await getSettings());
+  if (message.type === 'GET_SETTINGS') {
+    const settings = await getSettings();
+    // The content script needs the resolved guidance state, never the bridge token.
+    return { ...publicSettings(settings), guidance: globalThis.LexiLoomGuidance.publicSettings(settings) };
+  }
   if (message.type === 'GET_CATALOG') return getCatalog(message.catalog);
   if (message.type === 'OPEN_OPTIONS') {
     await chrome.runtime.openOptionsPage();
