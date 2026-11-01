@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import '../extension/shared/languages.js';
 import '../extension/shared/locale.js';
 import '../extension/shared/core.js';
 import '../extension/shared/present.js';
@@ -23,6 +24,9 @@ test('Chinese words and characters normalize without changing their script', () 
     assert.equal(wordLanguage(word), 'zh');
   }
   assert.equal(wordLanguage('Apple'), 'en');
+  assert.equal(normalizeWord('学'.repeat(32)), '学'.repeat(32));
+  assert.equal(normalizeWord('学'.repeat(33)), '');
+  assert.equal(normalizeWord('𠮷'.repeat(32)), '𠮷'.repeat(32));
   for (const word of ['hello world', '学习/../../', 'test<script>', '學習123', '<学习>', 'a'.repeat(49)]) assert.equal(normalizeWord(word), '');
 });
 test('selection segments Chinese words, preserves English contractions and deduplicates mixed selections', () => {
@@ -34,6 +38,7 @@ test('selection segments Chinese words, preserves English contractions and dedup
   assert.ok(!sentence.words.some(value => value.includes('。')));
   assert.equal(parseSelection('学 一 二 三 四 五 六 七 八 九', 'zh-CN').words.length, 8);
   assert.equal(parseSelection('学 一 二 三 四 五 六 七 八 九', 'zh-CN').truncated, true);
+  assert.ok(parseSelection('我喜欢学习中文'.repeat(20), 'zh-CN').words.includes('学习'));
 });
 test('public settings expose only a validated Chinese region', () => {
   assert.equal(publicSettings({ chineseRegion: 'HK', bridgeToken: 'private' }).chineseRegion, 'HK');

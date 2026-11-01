@@ -435,7 +435,7 @@
     "message": "无法连接本地词典服务，请确认服务正在运行。"
   },
   "error_invalid_word": {
-    "message": "请选择 48 个字符以内的英文单词或中文字词。"
+    "message": "英文单词最多 48 个字符，中文字词最多 32 字。"
   },
   "error_unsupported_format": {
     "message": "词典返回的数据格式暂不支持，请打开原词典查看。"
@@ -529,5 +529,47 @@
   },
   "source_wiktionary_chinese": {
     "message": "维基词典 · 中文字词"
+  },
+  "pos_noun": {
+    "message": "名词"
+  },
+  "pos_verb": {
+    "message": "动词"
+  },
+  "pos_adjective": {
+    "message": "形容词"
+  },
+  "pos_adverb": {
+    "message": "副词"
+  },
+  "pos_pronoun": {
+    "message": "代词"
+  },
+  "pos_preposition": {
+    "message": "介词"
+  },
+  "pos_conjunction": {
+    "message": "连词"
+  },
+  "pos_interjection": {
+    "message": "感叹词"
+  },
+  "pos_determiner": {
+    "message": "限定词"
+  },
+  "pos_exclamation": {
+    "message": "感叹词"
+  },
+  "pos_phrase": {
+    "message": "短语"
+  },
+  "source_moe": {
+    "message": "教育部《重编国语辞典修订本》· 萌典"
+  },
+  "source_wiktionary_zh_zh": {
+    "message": "中文维基词典 · WiktApi"
+  },
+  "source_wiktionary_en_zh": {
+    "message": "英文维基词典 · WiktApi"
   }
 }

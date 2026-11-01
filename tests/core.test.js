@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import '../extension/shared/languages.js';
 import '../extension/shared/core.js';
 import '../extension/shared/demo-data.js';
 const { parseSelection, normalizeWord, publicSettings, safeHttps } = globalThis.LexiLoomCore;

@@ -31,6 +31,11 @@ macOS 也可在 Finder 中双击相应 `.command` 文件；终端中使用 `sh` 
 
 打包只收集扩展文件，使用 Node 原生实现的 ZIP32、CRC32 和固定元数据，不依赖 `ditto`、系统 `zip` 或 PowerShell 压缩命令。归档路径统一使用 `/`；包内不包含本地服务、`.env`、`node_modules`、`.DS_Store` 或 `__MACOSX`。相同源码字节应在三个系统生成字节一致的 ZIP。
 
+一次打包会生成两份 ZIP，内容相同，目录层级不同：
+
+- `LexiLoom-<版本>-chrome.zip`：保留外层 `LexiLoom/` 文件夹，解压后适合“加载已解压的扩展程序”。
+- `LexiLoom-<版本>-store.zip`：`manifest.json` 直接位于 ZIP 根目录，供以后向 Chrome 网上应用店提交。打包命令只生成文件，不上传或发布扩展。[商店打包要求](https://developer.chrome.com/docs/webstore/prepare)。
+
 ## 开发验证与 CI
 
 浏览器自动化属于开发工具，需要先在项目根目录运行 `npm ci` 安装锁定的 `playwright-core`。在 Windows/macOS 执行 `npx --no-install playwright-core install chromium`；Linux 执行 `npx --no-install playwright-core install --with-deps chromium`，后者可能需要系统包安装权限。随后运行：
@@ -43,7 +48,7 @@ node tools/browser-qa.js
 node tools/browser-locale-qa.js
 ```
 
-[CI 工作流](../.github/workflows/ci.yml) 已配置 Windows、Linux、macOS 三个平台的 Node 测试、静态检查、打包以及真实 Chromium 扩展自动化。每个平台上传独立的浏览器报告和截图，再由汇总任务比较三份通用 ZIP 的文件名与原始字节。首次上传到 GitHub 后，可在 Actions 中查看各平台的实际结果。
+[CI 工作流](../.github/workflows/ci.yml) 在 Windows、Linux、macOS 上执行 Node 测试、静态检查、打包及真实 Chromium 扩展自动化。每个平台上传浏览器报告和两种 ZIP，再由汇总任务分别比较加载版和商店版在三个系统的文件名与原始字节。
 
 自动化使用 Playwright 下载的 Chromium，通过持久上下文加载扩展；它会实际操作浏览器中的词卡和设置页。官方文档说明该方式支持无界面扩展测试，Chrome/Edge 成品浏览器已移除部分命令行加载扩展参数，因此测试使用 Chromium。[扩展测试说明](https://playwright.dev/docs/chrome-extensions)、[浏览器安装说明](https://playwright.dev/docs/browsers)、[playwright-core CLI 定义](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/package.json)。
 
@@ -51,4 +56,4 @@ CI 默认使用确定性测试词条和响应，浏览器与扩展本身实际�
 
 中文界面的检查不靠 `--lang=zh-CN`。macOS 和 Linux 上这个参数改不了 `chrome.i18n.getUILanguage()`。测试会复制扩展，在内容脚本、设置页和后台里把这个函数换成指定语言，再跑原来的中文词卡检查。`browser-locale-qa.js` 用同一办法分别看简体、香港、台湾和英文界面。Windows 上启动器测试用系统最终路径比较临时目录，避免把同一个目录的 8.3 短名和长路径当成两个目录。
 
-**验证边界：** 当前已执行的本地浏览器验证来自 macOS。此工作流已编写，尚未在远程 GitHub Actions 上运行；Windows/Linux 的真实结果须以后续对应 runner 的报告为准。三平台配置不等同于三平台实测。词典授权 API 的成功访问还需要用户提供有效凭据，不能由本地演示词条或模拟响应证明。
+**已核实的远程结果：** 提交 `c5301dd` 的 [CI run 41215903948](https://github.com/lightporta/LexiLoom/actions/runs/41215903948) 已成功完成，三个系统的 Node、静态检查、打包、Chromium 词卡流程和四组界面语言测试，以及原有通用 ZIP 字节比较均通过。这是该提交的验收结果；后续改动（包括新增商店 ZIP 和 UI 回归）需由对应的新 CI 记录证明。界面语言测试注入受控输入，不等于逐一切换真实操作系统语言。Oxford / Cambridge 的授权访问仍需有效凭据，演示与模拟响应不能证明官方接口已联通。

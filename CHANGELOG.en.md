@@ -2,6 +2,14 @@
 
 [中文](CHANGELOG.md)
 
+## 0.3.1 · 2026-11-01
+
+- Language profiles, dictionary adapters and cards now share one entry contract. UI language and headword language remain separate; combined requests share four slots until their response bodies finish downloading.
+- Ambiguous simplified characters keep both the original and converted lookup. Mismatched headwords and readings from another language are rejected. Supplementary Taiwan readings retain their source attribution.
+- Fixed hidden Chinese attribution and notices in the English UI, and Simplified part-of-speech labels in the Traditional UI. System speech follows the reading's explicit locale.
+- Settings saves update only the supplied fields, preserving pause state and preferences changed in another window.
+- Packaging writes both the unpacked-extension layout and a store layout with the manifest at its root. Added UI regressions and current validation notes.
+
 ## 0.3.0 · 2026-10-31
 
 - Chinese words use the same card as English words. Simplified Chinese shows Hanyu Pinyin. Taiwan shows the Ministry of Education wording and Zhuyin. Hong Kong prefers Jyutping marked as Hong Kong.
@@ -26,7 +34,7 @@
 - Pinned the browser QA dependency, added three-platform CI and a byte-identical ZIP check. Default QA does not depend on a third-party site being online.
 - Initialized a separate Git repository and the `main` branch, with a local commit for you to push.
 
-The run that has actually been measured is from macOS. Windows and Linux results wait for the matching CI runners after you push. The official Oxford and Cambridge APIs still need a credential check.
+Version 0.2.0 was verified locally on macOS. Commit `c5301dd` later passed the three-platform CI, as recorded in the validation notes. Official Oxford and Cambridge access still needs a credential check.
 
 ## 0.1.0 · 2026-10-31
 

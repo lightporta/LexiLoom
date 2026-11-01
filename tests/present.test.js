@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+await import('../extension/shared/languages.js');
 await import('../extension/shared/present.js');
 await import('../extension/shared/demo-data.js');
 const { presentEntry, resolveLookupProvider, hasCjk } = globalThis.LexiLoomPresent;

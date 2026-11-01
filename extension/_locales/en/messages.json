@@ -435,7 +435,7 @@
     "message": "Could not reach the local dictionary service. Make sure it is running."
   },
   "error_invalid_word": {
-    "message": "Select an English or Chinese word of up to 48 characters."
+    "message": "English words support up to 48 characters; Chinese words up to 32 characters."
   },
   "error_unsupported_format": {
     "message": "The dictionary returned a format that is not supported yet. Open the original dictionary."
@@ -529,5 +529,47 @@
   },
   "source_wiktionary_chinese": {
     "message": "Wiktionary · Chinese words"
+  },
+  "pos_noun": {
+    "message": "noun"
+  },
+  "pos_verb": {
+    "message": "verb"
+  },
+  "pos_adjective": {
+    "message": "adjective"
+  },
+  "pos_adverb": {
+    "message": "adverb"
+  },
+  "pos_pronoun": {
+    "message": "pronoun"
+  },
+  "pos_preposition": {
+    "message": "preposition"
+  },
+  "pos_conjunction": {
+    "message": "conjunction"
+  },
+  "pos_interjection": {
+    "message": "interjection"
+  },
+  "pos_determiner": {
+    "message": "determiner"
+  },
+  "pos_exclamation": {
+    "message": "exclamation"
+  },
+  "pos_phrase": {
+    "message": "phrase"
+  },
+  "source_moe": {
+    "message": "Taiwan MOE Revised Mandarin Dictionary · MoeDict"
+  },
+  "source_wiktionary_zh_zh": {
+    "message": "Chinese Wiktionary · WiktApi"
+  },
+  "source_wiktionary_en_zh": {
+    "message": "English Wiktionary · WiktApi"
   }
 }

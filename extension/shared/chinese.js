@@ -1,6 +1,6 @@
 // Chinese lookup combines independently attributed corpora. Script conversion
 // changes spelling for display/search; it never invents regional pronunciations.
-import { Converter } from './chinese-data/opencc.js';
+import { Converter, Locale } from './chinese-data/opencc.js';
 import { readJsonLimited, safeHttps } from './providers.js';
 
 const chineseWord = /^[\p{Unified_Ideograph}\u3007]+$/u;
@@ -31,6 +31,23 @@ export function convertChineseText(value, region = 'CN') {
 function canonicalWord(word) {
   // Normalize regional character variants before expanding Simplified Chinese.
   return converter('cn', 't')(converter('tw', 't')(converter('hk', 't')(word)));
+}
+
+let simplifiedVariants;
+function characterVariants(word) {
+  if (Array.from(word).length !== 1 || convertChineseText(word, 'CN') !== word) return [];
+  if (!simplifiedVariants) {
+    simplifiedVariants = new Map();
+    // Reuse the bundled conversion table. This is spelling metadata, not a
+    // second dictionary, and it must not decide which character sense is right.
+    for (const stage of Locale.to.cn) for (const table of stage) for (const pair of table.split('|')) {
+      const [traditional, simplified] = pair.split(' ');
+      if (Array.from(traditional || '').length !== 1 || Array.from(simplified || '').length !== 1) continue;
+      if (!simplifiedVariants.has(simplified)) simplifiedVariants.set(simplified, new Set());
+      simplifiedVariants.get(simplified).add(traditional);
+    }
+  }
+  return [...(simplifiedVariants.get(word) || [])].slice(0, 6);
 }
 
 export function localizeChineseEntry(result, region = 'CN') {
@@ -174,7 +191,10 @@ function deduplicateSounds(values) {
 }
 
 function regionalSounds(payloads, region) {
-  const sounds = payloads.flatMap(payload => list(payload?.entries).flatMap(entry => list(entry?.sounds)));
+  const sounds = payloads.flatMap(payload => list(payload?.entries)
+    .filter(entry => entry && typeof entry === 'object' && (!(entry.lang_code || entry.langcode) || (entry.lang_code || entry.langcode) === 'zh'))
+    .flatMap(entry => list(entry.sounds).filter(sound => sound && typeof sound === 'object')
+      .map(sound => ({ ...sound, _sourceUrl: wikiSource(payload._queryWord, payload._edition).url }))));
   const eligible = sounds.filter(sound => {
     const label = tags(sound);
     if (region === 'HK') return /Cantonese/.test(label) && !/Taishan|Taicheng/.test(label) && (/Jyutping/.test(label) || sound.audio);
@@ -189,12 +209,12 @@ function regionalSounds(payloads, region) {
   const hasHongKong = selected.some(sound => /Hong.Kong|香港/.test(tags(sound)));
   const name = region === 'TW' ? '注音 · 維基詞典' : region === 'HK' ? hasHongKong ? '粵語拼音 · 香港' : '粵語拼音 · 通用' : '汉语拼音 · 普通话';
   const locale = region === 'TW' ? 'zh-TW' : region === 'HK' ? 'zh-HK' : 'zh-CN';
-  const result = seenPronunciations.map(phonetic => ({ label: name, phonetic, locale }));
+  const result = seenPronunciations.map(phonetic => ({ label: name, phonetic, locale, sourceUrl: selected.find(sound => text(sound.zh_pron, 200) === phonetic)._sourceUrl }));
   const audioCandidates = eligible.filter(sound => safeHttps(sound.mp3_url || sound.ogg_url)
     && (region !== 'TW' || /Taiwan/.test(tags(sound))));
   for (const sound of audioCandidates.slice(0, 1)) result.push({
     label: region === 'HK' ? '粵語詞典音頻' : region === 'TW' ? '臺灣國語音頻' : '普通话词典音频',
-    phonetic: '', audio: safeHttps(sound.mp3_url) || safeHttps(sound.ogg_url), attributionUrl: audioAttribution(sound), locale
+    phonetic: '', audio: safeHttps(sound.mp3_url) || safeHttps(sound.ogg_url), attributionUrl: audioAttribution(sound), locale, sourceUrl: sound._sourceUrl
   });
   if (region === 'HK') {
     const pinyin = regionalSounds(payloads, 'CN').find(sound => sound.phonetic);
@@ -228,7 +248,7 @@ async function limitedRequest(task) {
   finally { const next = requestQueue.shift(); if (next) next(); else requestCount--; }
 }
 
-async function retrieve(url, kind, { fetchImpl, timeoutMs }) {
+async function retrieve(url, kind, { fetchImpl, timeoutMs, expectedEdition, expectedWord }) {
   return limitedRequest(async () => {
     try {
       const response = await fetchImpl(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs), credentials: 'omit', redirect: 'error', cache: 'no-store' });
@@ -240,14 +260,22 @@ async function retrieve(url, kind, { fetchImpl, timeoutMs }) {
       }
       if (!response.ok) return { status: 'error', code: response.status === 429 ? 'rate-limit' : 'upstream' };
       const payload = await readJsonLimited(response);
-      const supported = kind === 'moe' ? Array.isArray(payload?.heteronyms) : Array.isArray(payload?.entries);
+      const supported = kind === 'moe'
+        ? Array.isArray(payload?.heteronyms) && (payload.title === undefined || payload.title === expectedWord)
+        : Array.isArray(payload?.entries) && (payload.edition === undefined || payload.edition === expectedEdition)
+          && (payload.word === undefined || payload.word === expectedWord);
       return supported ? { status: 'ok', payload } : { status: 'error', code: 'unsupported-format' };
     } catch (error) { return { status: 'error', code: ['TimeoutError', 'AbortError'].includes(error?.name) ? 'timeout' : 'network' }; }
   });
 }
 
 function localizedNotice(messages, region, english) {
-  return messages.map(message => english ? message[1] : convertChineseText(message[0], region)).join(' ');
+  return messages.map(message => {
+    const localized = english ? message[1] : convertChineseText(message[0], region);
+    // Query spellings are evidence, not translatable prose. Insert them after
+    // converting the UI text so 干 / 乾 / 幹 remain distinguishable.
+    return localized.replace(/\{([a-z]+)\}/gi, (match, key) => typeof message[2]?.[key] === 'string' ? message[2][key] : match);
+  }).join(' ');
 }
 
 export async function lookupChinese(value, { region = 'CN', uiLanguage = 'zh-CN', fetchImpl = fetch, timeoutMs = 10000 } = {}) {
@@ -256,33 +284,70 @@ export async function lookupChinese(value, { region = 'CN', uiLanguage = 'zh-CN'
   const english = String(uiLanguage).toLowerCase().startsWith('en');
   if (!validChineseWord(word)) return fail('', region, 'invalid-word', english ? 'Select a Chinese character or a word of up to 32 characters.' : '请选择 32 个字以内的中文字词。');
   const queryWord = canonicalWord(word);
-  const encoded = encodeURIComponent(queryWord), options = { fetchImpl, timeoutMs };
-  const [chinese, counterpart, moe] = await Promise.all([
-    retrieve(`https://api.wiktapi.dev/v1/zh/word/${encoded}?lang=zh`, 'wiki', options),
-    retrieve(`https://api.wiktapi.dev/v1/en/word/${encoded}?lang=zh`, 'wiki', options),
-    region === 'TW' ? retrieve(`https://www.moedict.tw/uni/${encoded}.json`, 'moe', options) : Promise.resolve(null)
-  ]);
-  const wikiChinese = chinese.status === 'ok' ? normalizeWikiMeanings(chinese.payload, { region, edition: 'zh' }) : [];
-  const wikiEnglish = counterpart.status === 'ok' ? normalizeWikiMeanings(counterpart.payload, { region, edition: 'en' }) : [];
+  const queryWords = Array.from(word).length === 1 && word !== queryWord ? [word, queryWord] : [queryWord];
+  const options = { fetchImpl, timeoutMs };
+  const wikiRequests = queryWords.map(async query => {
+    const encoded = encodeURIComponent(query);
+    const [chinese, counterpart] = await Promise.all(['zh', 'en'].map(edition =>
+      retrieve(`https://api.wiktapi.dev/v1/${edition}/word/${encoded}?lang=zh`, 'wiki', { ...options, expectedEdition: edition, expectedWord: query })));
+    return { query, chinese, counterpart,
+      meaningsZh: chinese.status === 'ok' ? normalizeWikiMeanings(chinese.payload, { region, edition: 'zh' }) : [],
+      meaningsEn: counterpart.status === 'ok' ? normalizeWikiMeanings(counterpart.payload, { region, edition: 'en' }) : [] };
+  });
+  const moeRequests = [];
+  async function retrieveTaiwan() {
+    if (region !== 'TW') return null;
+    for (const query of queryWords) {
+      const response = await retrieve(`https://www.moedict.tw/uni/${encodeURIComponent(query)}.json`, 'moe', { ...options, expectedWord: query });
+      const candidate = { ...response, query };
+      moeRequests.push(candidate);
+      if (response.status === 'ok' && normalizeMoe(response.payload, region).meanings.length) return candidate;
+    }
+    return moeRequests.at(-1);
+  }
+  const [wikiGroups, moe] = await Promise.all([Promise.all(wikiRequests), retrieveTaiwan()]);
+  const wikiChinese = wikiGroups.flatMap(group => group.meaningsZh);
+  const wikiEnglish = wikiGroups.flatMap(group => group.meaningsEn);
   const taiwan = moe?.status === 'ok' ? normalizeMoe(moe.payload, region) : { meanings: [], pronunciations: [] };
+  if (moe?.query) taiwan.pronunciations = taiwan.pronunciations.map(sound => ({ ...sound, sourceUrl: moeSource(moe.query).url }));
   const primaryMeanings = taiwan.meanings.length ? taiwan.meanings : wikiChinese;
   const meanings = english ? [...wikiEnglish, ...primaryMeanings] : [...primaryMeanings, ...wikiEnglish];
-  const responses = [chinese, counterpart, moe].filter(Boolean);
+  const responses = [...wikiGroups.flatMap(group => [group.chinese, group.counterpart]), ...moeRequests];
   if (!meanings.length) {
     if (responses.every(response => response.status === 'not-found')) return baseResult(word, region, 'not-found');
     return fail(word, region, responses.find(response => response.status === 'error')?.code || 'unsupported-format', english ? 'The Chinese dictionary could not provide a usable entry. Please try again.' : '中文词源暂时无法提供可用词条，请稍后重试。');
   }
   limitExamples(meanings);
-  const wikiPayloads = [counterpart.payload, chinese.payload].filter(Boolean);
-  const pronunciations = taiwan.pronunciations.length ? taiwan.pronunciations : regionalSounds(wikiPayloads, region);
-  const wikiSoundUsed = !taiwan.pronunciations.length && pronunciations.length;
-  const components = [
-    ...(taiwan.meanings.length ? [moeSource(queryWord)] : []),
-    ...(wikiChinese.length && !taiwan.meanings.length || wikiSoundUsed && chinese.payload && list(chinese.payload.entries).some(entry => list(entry.sounds).length) ? [wikiSource(queryWord, 'zh')] : []),
-    ...(wikiEnglish.length || wikiSoundUsed && counterpart.payload && list(counterpart.payload.entries).some(entry => list(entry.sounds).length) ? [wikiSource(queryWord, 'en')] : [])
+  const wikiPayloads = wikiGroups.flatMap(group => [
+    group.counterpart.payload && { ...group.counterpart.payload, _queryWord: group.query, _edition: 'en' },
+    group.chinese.payload && { ...group.chinese.payload, _queryWord: group.query, _edition: 'zh' }
+  ]).filter(Boolean);
+  const wikiPronunciations = regionalSounds(wikiPayloads, region);
+  const moeZhuyin = taiwan.pronunciations.filter(sound => /注音/.test(sound.label));
+  const pronunciations = taiwan.pronunciations.length ? deduplicateSounds([
+    ...moeZhuyin,
+    ...(!moeZhuyin.length ? wikiPronunciations.filter(sound => /注音/.test(sound.label)) : []),
+    ...taiwan.pronunciations.filter(sound => !/注音/.test(sound.label)),
+    ...wikiPronunciations.filter(sound => sound.audio)
+  ]) : wikiPronunciations;
+  const soundSources = new Set(pronunciations.map(sound => sound.sourceUrl));
+  const componentCandidates = [
+    ...(taiwan.meanings.length ? [moeSource(moe.query)] : []),
+    ...wikiGroups.filter(group => group.meaningsZh.length && !taiwan.meanings.length || soundSources.has(wikiSource(group.query, 'zh').url)).map(group => wikiSource(group.query, 'zh')),
+    ...wikiGroups.filter(group => group.meaningsEn.length || soundSources.has(wikiSource(group.query, 'en').url)).map(group => wikiSource(group.query, 'en')),
+    ...(moe?.query && !taiwan.meanings.length && soundSources.has(moeSource(moe.query).url) ? [moeSource(moe.query)] : [])
   ];
+  const components = componentCandidates.filter((component, index) => componentCandidates.findIndex(other => other.url === component.url) === index);
   const source = { ...components[0], components, sourceUrls: components.map(component => component.url) };
   const notices = [];
+  const original = wikiGroups.find(group => group.query === word);
+  const variants = characterVariants(word);
+  const originalHasMeaning = original && (original.meaningsZh.length || original.meaningsEn.length) || moe?.query === word && taiwan.meanings.length;
+  if (queryWords.length > 1 && (originalHasMeaning || variants.length > 1)) notices.push([
+    '单字“{word}”可能涉及{variants}等字形；本次分别查询原字和“{query}”，并非全部字义，建议选完整词语。',
+    'The character “{word}” can involve different spellings ({variants}). This result checks the original and “{query}”, not every sense; select a complete word for context.',
+    { word, variants: unique([word, ...variants]).join(english ? ', ' : '、'), query: queryWord }
+  ]);
   if (region === 'TW' && !taiwan.meanings.length) notices.push(['台湾词源未能提供此词，已显示维基词典补充资料。', 'The Taiwan dictionary did not provide this word; showing supplementary Wiktionary data.']);
   if (!primaryMeanings.length) notices.push(['中文词源未收录可用释义，已显示英文解释。', 'No usable Chinese definition was returned; showing the English explanation.']);
   if (!wikiEnglish.length) notices.push(['词源暂未提供英文解释。', 'An English explanation is not available from the current source.']);
@@ -297,7 +362,8 @@ export async function lookupChinese(value, { region = 'CN', uiLanguage = 'zh-CN'
           : /臺灣/.test(pronunciation.label) ? 'Pinyin · Taiwan' : /補充/.test(pronunciation.label) ? 'Pinyin · Mandarin (supplement)' : 'Pinyin · Mandarin'
   })) : pronunciations;
   const result = {
-    ...baseResult(word, region, 'ok', source), queryWord, meanings, pronunciations: finalPronunciations,
+    ...baseResult(word, region, 'ok', source), queryWord, queryWords, meanings, pronunciations: finalPronunciations,
+    ...(queryWords.length > 1 && originalHasMeaning ? { displayWord: word } : {}),
     phonetic: pronunciations.find(pronunciation => pronunciation.phonetic)?.phonetic || '',
     scriptConversion: { engine: 'OpenCC 1.4.2', appliesTo: 'Wiktionary text and display/search spelling; MOE text is unchanged' },
     ...(notices.length ? { notice: localizedNotice(notices, region, english) } : {})

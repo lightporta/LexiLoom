@@ -74,7 +74,7 @@ globalThis.LexiLoomTheme = `
   .word-row { display: flex; align-items: baseline; gap: 10px; padding-right: 25px; }
   .word { display: block; font: 500 27px/1.15 Georgia, "Times New Roman", serif; letter-spacing: -.6px; overflow-wrap: anywhere; }
   .expand-hint { color: #849286; font-size: 18px; line-height: 1; margin-left: auto; }
-  .phonetic { display: block; margin-top: 5px; color: #78857b; font-size: 12px; }
+  .phonetic { display: block; margin-top: 5px; color: #586f61; font-size: 13px; }
   .summary-text {
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; font-size: 13px; line-height: 1.65; margin-top: 9px; color: #526258;
@@ -111,7 +111,7 @@ globalThis.LexiLoomTheme = `
   .entry-footer { border-top: 1px dashed var(--ll-line); padding-top: 11px; margin-top: 14px; }
   .source-link { color: var(--ll-green); font-size: 11px; text-decoration: none; }
   .source-link:hover { text-decoration: underline; }
-  .source-note { color: #92998e; font-size: 10px; margin-top: 5px; }
+  .source-note { color: #657460; font-size: 11px; line-height: 1.6; margin-top: 5px; }
   .lookup-notice { padding: 0 16px 12px; color: #9b693d; font-size: 11px; line-height: 1.7; }
   .example-reference { display: block; font-style: normal; }
   .source-license, .audio-attribution { display: block; margin-top: 6px; }
@@ -119,7 +119,7 @@ globalThis.LexiLoomTheme = `
   .meaning-heading { margin-top: 16px; }
   .state-actions { display: flex; padding: 0 16px 13px; gap: 9px; }
   .text-button { border: 0; padding: 0; background: transparent; font-size: 12px; color: var(--ll-green); text-decoration: underline; text-underline-offset: 3px; }
-  .footer { padding: 9px 15px 11px; border-top: 1px solid var(--ll-line); color: #8b9489; font-size: 10px; line-height: 1.6; flex-shrink: 0; }
+  .footer { padding: 9px 15px 11px; border-top: 1px solid var(--ll-line); color: #687568; font-size: 11px; line-height: 1.6; flex-shrink: 0; }
   .footer span { display: block; }
   .notice { color: var(--ll-orange); }
   .launcher {

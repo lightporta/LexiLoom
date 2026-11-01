@@ -31,6 +31,11 @@ Only the dictionary service reads `bridge/.env`. Copy `bridge/.env.example` to `
 
 Packaging collects extension files only. It uses a Node implementation of ZIP32, CRC32, and fixed metadata. It does not call `ditto`, the system `zip`, or PowerShell compression. Archive paths use `/`. The package does not contain the local service, `.env`, `node_modules`, `.DS_Store`, or `__MACOSX`. The same source bytes should produce a byte-identical ZIP on all three systems.
 
+Each build creates two ZIPs with the same files at different directory levels:
+
+- `LexiLoom-<version>-chrome.zip` keeps the outer `LexiLoom/` folder for unpacking and loading locally.
+- `LexiLoom-<version>-store.zip` places `manifest.json` at the ZIP root for a future Chrome Web Store submission. Packaging only writes files; it does not upload or publish anything. [Store package requirements](https://developer.chrome.com/docs/webstore/prepare).
+
 ## Development checks and CI
 
 Browser automation is a development tool. From the project root, `npm ci` installs the locked `playwright-core`. On Windows or macOS run `npx --no-install playwright-core install chromium`. On Linux run `npx --no-install playwright-core install --with-deps chromium`, which may need permission to install system packages. Then run:
@@ -43,7 +48,7 @@ node tools/browser-qa.js
 node tools/browser-locale-qa.js
 ```
 
-The [CI workflow](../.github/workflows/ci.yml) runs Node tests, the static check, packaging, and real Chromium extension automation on Windows, Linux, and macOS. Each platform uploads its browser report and screenshots. A later job compares the file names and raw bytes of the three universal ZIPs. After the first push to GitHub, read each platform's result in Actions.
+The [CI workflow](../.github/workflows/ci.yml) runs Node tests, the static check, packaging, and real Chromium extension automation on Windows, Linux, and macOS. Each platform uploads its browser evidence and both ZIP layouts. A later job compares file names and raw bytes separately for each layout across the three systems.
 
 Automation uses the Chromium build Playwright downloads and loads the extension in a persistent context. It actually drives the cards and the settings page. Playwright's documentation describes headless extension testing. Shipping Chrome and Edge have removed some command-line flags for loading extensions, so the tests use Chromium. [Extension testing](https://playwright.dev/docs/chrome-extensions), [browser install](https://playwright.dev/docs/browsers), [playwright-core CLI](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/package.json).
 
@@ -51,4 +56,4 @@ CI uses deterministic test entries and responses by default. The browser and the
 
 The Chinese-interface check does not use `--lang=zh-CN`. On macOS and Linux that flag does not change `chrome.i18n.getUILanguage()`. The test copies the extension and replaces that function in the content script, the settings page and the background, then runs the original Chinese card checks. `browser-locale-qa.js` does the same for Simplified Chinese, Hong Kong, Taiwan and English. On Windows, the launcher test compares a temporary directory by the operating system's final path, so an 8.3 short name and the long path of the same directory count as one directory.
 
-**Limit of the evidence:** The local browser run that has already been executed was on macOS. This workflow is written and has not yet run on remote GitHub Actions. Windows and Linux results have to come from those runners later. Configuring three platforms is not the same as having measured three platforms. A successful call to a licensed dictionary API still needs valid credentials from you. Demo entries and simulated responses do not prove that.
+**Verified remote result:** [CI run 41215903948](https://github.com/lightporta/LexiLoom/actions/runs/41215903948) succeeded for commit `c5301dd`. Node tests, static checks, packaging, Chromium card interactions and four controlled UI-locale checks passed on all three systems, along with the original universal ZIP comparison. This evidence belongs to that commit. Later changes, including the new store-layout ZIP and UI regressions, require their own CI run. Language checks inject controlled language inputs; they do not switch the operating system's native UI language. Oxford / Cambridge connectivity still requires valid credentials and is not proved by demo or fixture responses.

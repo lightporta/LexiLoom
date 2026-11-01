@@ -33,6 +33,8 @@ jobs:
         run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await Promise.all(['browser-validation.json','browser-single.png','browser-multi.png','browser-narrow.png','browser-wiktionary.png','reading-room.png','qa-failure.png'].map(name => rm('docs/' + name, { force:true })));"
       - name: Remove previous locale fixture evidence
         run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-locales', { recursive:true, force:true });"
+      - name: Remove previous UI regression evidence
+        run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-ui', { recursive:true, force:true });"
       - name: Node regression tests
         run: npm test
       - name: Check extension and scripts
@@ -49,11 +51,19 @@ jobs:
         run: node tools/browser-qa.js
       - name: Check Chinese regions and English in real Chromium with controlled UI locale inputs
         run: node tools/browser-locale-qa.js
+      - name: Check source attribution, reading locale and Traditional Chinese UI
+        run: npm run test:browser:ui
       - name: Upload this platform's universal package
         uses: actions/upload-artifact@v7
         with:
           name: chrome-${{ runner.os }}
           path: dist/*-chrome.zip
+          if-no-files-found: error
+      - name: Upload this platform's store-layout package
+        uses: actions/upload-artifact@v7
+        with:
+          name: store-${{ runner.os }}
+          path: dist/*-store.zip
           if-no-files-found: error
       - name: Upload browser evidence
         if: ${{ !cancelled() }}
@@ -66,6 +76,7 @@ jobs:
             docs/reading-room.png
             docs/qa-failure.png
             test-results/browser-locales/**
+            test-results/browser-ui/**
           if-no-files-found: warn
           retention-days: 14
 
@@ -80,8 +91,12 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           pattern: chrome-*
-          path: packages
-      - name: Require identical ZIPs from all three operating systems
+          path: packages/chrome
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: store-*
+          path: packages/store
+      - name: Require identical ZIPs for each layout from all three operating systems
         shell: bash
         run: |
           node --input-type=module <<'NODE'
@@ -93,13 +108,15 @@ jobs:
             const entries = await readdir(dir, { withFileTypes: true });
             return (await Promise.all(entries.map(entry => entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]))).flat();
           }
-          const archives = (await files('packages')).filter(file => file.endsWith('-chrome.zip')).sort();
-          assert.equal(archives.length, 3, 'Expected one package from each operating system');
-          const baseline = await readFile(archives[0]);
-          for (const archive of archives) {
-            const bytes = await readFile(archive);
-            assert.equal(basename(archive), basename(archives[0]), 'Package names differ across platforms');
-            assert.ok(bytes.equals(baseline), `Package bytes differ: ${archive}`);
-            console.log(`${createHash('sha256').update(bytes).digest('hex')}  ${archive}`);
+          for (const layout of ['chrome', 'store']) {
+            const archives = (await files(`packages/${layout}`)).filter(file => file.endsWith(`-${layout}.zip`)).sort();
+            assert.equal(archives.length, 3, `Expected one ${layout} package from each operating system`);
+            const baseline = await readFile(archives[0]);
+            for (const archive of archives) {
+              const bytes = await readFile(archive);
+              assert.equal(basename(archive), basename(archives[0]), 'Package names differ across platforms');
+              assert.ok(bytes.equals(baseline), `Package bytes differ: ${archive}`);
+              console.log(`${createHash('sha256').update(bytes).digest('hex')}  ${archive}`);
+            }
           }
           NODE

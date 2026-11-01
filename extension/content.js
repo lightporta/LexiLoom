@@ -35,13 +35,13 @@
     return message || t("error_generic");
   };
   const noticeText = result => {
-    if (!englishUi()) return text(result?.notice);
-    if (result?.noticeKey) return t(result.noticeKey);
-    const notice = text(result?.notice);
-    return present?.hasCjk(notice) ? "" : notice;
+    if (result?.noticeKey) {
+      const localized = t(result.noticeKey);
+      if (localized) return localized;
+    }
+    return text(result?.notice);
   };
-  const sourceName = source => t(`source_${source?.id || ""}`) || text(source?.name) || t("brandFallback");
-  const POS = { noun: "名词", verb: "动词", adjective: "形容词", adverb: "副词", pronoun: "代词", preposition: "介词", conjunction: "连词", interjection: "感叹词", determiner: "限定词", exclamation: "感叹词", phrase: "短语" };
+  const sourceName = source => t(`source_${String(source?.id || '').replaceAll('-', '_')}`) || text(source?.name) || t("brandFallback");
   let enabled = true;
   let host, shadow, panel, cardList, footer, count, panelObserver;
   let launcher, launcherSnapshot, selectionTimer;
@@ -278,7 +278,12 @@
     return card;
   }
 
-  async function pronounce(word, pronunciation, node, entry) {
+  function speechLocale(pronunciation, view) {
+    try { return Intl.getCanonicalLocales(pronunciation.locale || view.speechFallbackLocale)[0]; }
+    catch { return view.speechFallbackLocale || 'en-US'; }
+  }
+
+  async function pronounce(word, pronunciation, node, view) {
     stopAudio();
     if (!node.dataset.defaultLabel) node.dataset.defaultLabel = node.textContent;
     node.textContent = node.dataset.defaultLabel;
@@ -299,9 +304,7 @@
       return;
     }
     const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = entry?.language === 'zh'
-      ? /粤|粵|Jyutping|Cantonese|yue/i.test(pronunciation.label || '') ? 'zh-HK' : entry.region === 'TW' ? 'zh-TW' : 'zh-CN'
-      : /UK|British|英/i.test(pronunciation.label || "") ? "en-GB" : "en-US";
+    utterance.lang = speechLocale(pronunciation, view);
     utterance.rate = .85;
     currentUtterance = utterance;
     const clearUtterance = () => {
@@ -312,7 +315,8 @@
     speechSynthesis.speak(utterance);
   }
 
-  function renderDetails(card, result) {
+  function renderDetails(card, view) {
+    const result = view.entry;
     card.details.replaceChildren(element("div", "divider"));
     const pronunciations = Array.isArray(result.pronunciations) ? result.pronunciations.slice(0, 4) : [];
     card.details.append(element("div", "section-label", t("sectionPronunciation")));
@@ -321,45 +325,45 @@
       const hasAudio = Boolean(safeURL(pronunciation.audio));
       const audioLabel = hasAudio ? t("audioDictionary") : t("audioSystem");
       const label = ["▷", text(pronunciation.label), text(pronunciation.phonetic), audioLabel].filter(Boolean).join("  ");
-      const node = button("pronunciation", label, `${card.word} · ${audioLabel}`, () => pronounce(card.word, pronunciation, node, result));
+      const node = button("pronunciation", label, `${card.word} · ${audioLabel}`, () => pronounce(result.displayWord || card.word, pronunciation, node, view));
+      node.lang = speechLocale(pronunciation, view);
       pronunciationRow.append(node);
     }
     if (!pronunciations.length || pronunciations.every(item => safeURL(item.audio))) {
       const system = { label: t("audioSystem") };
-      const node = button("pronunciation", `▷ ${t("audioSystem")}`, t("audioSystem"), () => pronounce(card.word, system, node, result));
+      const node = button("pronunciation", `▷ ${t("audioSystem")}`, t("audioSystem"), () => pronounce(result.displayWord || card.word, system, node, view));
+      node.lang = speechLocale(system, view);
       pronunciationRow.append(node);
     }
     card.details.append(pronunciationRow, element("div", "section-label", t("sectionMeaning")));
-    const english = englishUi();
-    const chineseWord = result.language === 'zh';
     let examplesShown = 0;
     let meaningLanguage;
     for (const meaning of (Array.isArray(result.meanings) ? result.meanings : []).slice(0, 12)) {
-      if (chineseWord && meaning.language && meaning.language !== meaningLanguage) {
-        card.details.append(element('div', 'section-label meaning-heading', t(meaning.language === 'en' ? 'sectionEnglishMeaning' : 'sectionChineseMeaning')));
+      if (view.showMeaningHeadings && meaning.language && meaning.language !== meaningLanguage) {
+        card.details.append(element('div', 'section-label meaning-heading', t(view.headingKeys[meaning.language]) || text(meaning.heading) || meaning.language));
         meaningLanguage = meaning.language;
       }
       const part = text(meaning.partOfSpeech);
-      const gloss = english ? "" : POS[part.toLowerCase()];
-      if (part || gloss) card.details.append(element("div", "part-of-speech", [part, gloss].filter(Boolean).join(" · ")));
+      const gloss = t(`pos_${part.toLowerCase()}`);
+      if (part || gloss) card.details.append(element("div", "part-of-speech", [...new Set([part, gloss].filter(Boolean))].join(" · ")));
       const definitions = element("ol", "definitions");
       for (const definition of (Array.isArray(meaning.definitions) ? meaning.definitions : []).slice(0, 8)) {
         const item = element("li");
         item.append(element("p", "definition", text(definition.definition)));
-        if ((!english || chineseWord) && definition.translation) item.append(element("p", "translation", text(definition.translation)));
+        if (view.showTranslations && definition.translation) item.append(element("p", "translation", text(definition.translation)));
         for (const example of (Array.isArray(definition.examples) ? definition.examples : []).slice(0, 4)) {
-          if (chineseWord && examplesShown >= 2) break;
+          if (examplesShown >= view.maxExamples) break;
           const exampleNode = element("blockquote", "example", text(example.text));
-          if ((!english || chineseWord) && example.translation) exampleNode.append(element("div", "example-translation", text(example.translation)));
-          if ((!english || chineseWord) && example.reference) exampleNode.append(element("cite", "source-note example-reference", text(example.reference)));
+          if (view.showTranslations && example.translation) exampleNode.append(element("div", "example-translation", text(example.translation)));
+          if (view.showReferences && example.reference) exampleNode.append(element("cite", "source-note example-reference", text(example.reference)));
           item.append(exampleNode);
           examplesShown++;
         }
-        if ((!english || chineseWord) && definition.usage) item.append(element("div", "usage", t("usagePrefix", [text(definition.usage)])));
+        if (view.showUsage && definition.usage) item.append(element("div", "usage", t("usagePrefix", [text(definition.usage)])));
         definitions.append(item);
       }
       card.details.append(definitions);
-      const synonyms = english ? [] : (Array.isArray(meaning.synonyms) ? meaning.synonyms : []).filter(value => typeof value === "string").slice(0, 10);
+      const synonyms = view.showSynonyms ? (Array.isArray(meaning.synonyms) ? meaning.synonyms : []).filter(value => typeof value === "string").slice(0, 10) : [];
       if (synonyms.length) card.details.append(element("div", "synonyms", t("synonymsPrefix", [synonyms.join(" · ")])));
     }
     if (result.noticeKey === "noticeNoEnglish") card.details.append(element("p", "definition", t("noticeNoEnglish")));
@@ -378,7 +382,7 @@
     if (result.source?.id === "free") entryFooter.append(element("div", "source-note", t("sourceFreeNote")));
     if (name) entryFooter.append(element("div", "source-note", t("sourceLine", [name])));
     const copyright = text(result.source?.copyright);
-    if (copyright && !(english && present?.hasCjk(copyright))) entryFooter.append(element("div", "source-note", copyright));
+    if (copyright) entryFooter.append(element("div", "source-note copyright", copyright));
     const licenseURL = safeURL(result.source?.license?.url);
     if (licenseURL) {
       const license = element("a", "source-link source-license", text(result.source.license.name) || t("sourceLicense"));
@@ -410,7 +414,8 @@
   }
 
   function renderResult(card, raw) {
-    const result = present?.presentEntry(raw, i18n?.languageTag() || 'zh-CN') || raw;
+    const view = present.createCardView({ word: card.word, ...raw }, i18n?.languageTag() || 'zh-CN');
+    const result = view.entry;
     card.wordLabel.textContent = text(result.displayWord) || card.word;
     card.article.setAttribute("aria-busy", "false");
     const notice = noticeText(result);
@@ -421,16 +426,12 @@
     card.phonetic.textContent = text(result.phonetic) || text(result.pronunciations?.[0]?.phonetic);
     card.sourceLabel.textContent = sourceName(result.source);
     if (result.status === "ok") {
-      const first = (result.language === 'zh' && result.meanings?.find(meaning => meaning.language === (englishUi() ? 'en' : 'zh') && meaning.definitions?.length))
-        || result.meanings?.find(meaning => meaning.definitions?.length);
-      const definition = first?.definitions?.[0];
-      const part = text(first?.partOfSpeech);
-      const gloss = englishUi() ? part : (POS[part.toLowerCase()] || part);
-      const meaningText = englishUi() || result.language === 'zh' ? text(definition?.definition) : (text(definition?.translation) || text(definition?.definition));
-      card.summaryText.textContent = [gloss, meaningText].filter(Boolean).join(" · ") || (result.noticeKey === "noticeNoEnglish" ? t("noticeNoEnglish") : t("foundPrompt"));
-      renderDetails(card, result);
+      const part = text(view.partOfSpeech);
+      const summary = view.summary ? [t(`pos_${part.toLowerCase()}`) || part, view.summary].filter(Boolean).join(' · ') : '';
+      card.summaryText.textContent = summary || (result.noticeKey === "noticeNoEnglish" ? t("noticeNoEnglish") : t("foundPrompt"));
+      renderDetails(card, view);
     } else {
-      card.summaryText.textContent = result.status === "not-found" ? t(core.wordLanguage(card.word) === 'zh' ? 'notFoundChinese' : 'notFound') : errorText(result);
+      card.summaryText.textContent = result.status === "not-found" ? t(view.notFoundKey) : errorText(result);
       card.details.replaceChildren(element("div", "divider"), element("p", "definition", result.status === "not-found" ? t("notFoundHint") : t("errorRetryHint")));
       const actions = element("div", "state-actions");
       if (result.status !== "not-found") actions.append(button("text-button", t("retry"), undefined, () => loadCard(card)));

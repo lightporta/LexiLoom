@@ -19,8 +19,7 @@ chrome.runtime.sendMessage({ type: 'GET_PRIVATE_SETTINGS' }).then(settings => {
 enabled.addEventListener('change', async () => {
   enabled.disabled = true;
   try {
-    const settings = await chrome.runtime.sendMessage({ type: 'GET_PRIVATE_SETTINGS' });
-    const result = await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: { ...settings, enabled: enabled.checked } });
+    const result = await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: { enabled: enabled.checked } });
     if (!result.ok) throw new Error('save-failed');
     status.textContent = enabled.checked ? t('popupEnabledOn') : t('popupEnabledOff');
     status.dataset.error = 'false';

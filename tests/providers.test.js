@@ -110,6 +110,15 @@ test('WiktApi normalizer filters other languages, malformed entries, unsafe audi
   for (const payload of [{}, { entries: [] }, { entries: [{ senses: [] }] }, { edition: 'en', entries: [{ senses: [{ glosses: ['English gloss'] }] }] }]) assert.equal(normalizeWiktionary('test', payload).error.code, 'unsupported-format');
 });
 
+test('WiktApi rejects a valid-shaped response for a different headword', async () => {
+  for (const wrongWord of ['other', null, 0, '']) {
+    const result = normalizeWiktionary('test', { ...(await fixture('wiktionary-zh')), word: wrongWord });
+    assert.equal(result.status, 'error');
+    assert.equal(result.error.code, 'unsupported-format');
+  }
+  assert.equal(normalizeWiktionary('Test', { ...(await fixture('wiktionary-zh')), word: 'test' }).status, 'ok');
+});
+
 test('Free Dictionary API retains HTTPS source, text license and separate audio license metadata', () => {
   const result = normalizeFree('test', [{ license: { name: 'CC BY-SA 3.0', url: 'https://creativecommons.org/licenses/by-sa/3.0/' }, sourceUrls: ['javascript:alert(1)', 'https://en.wiktionary.org/wiki/test'], phonetics: [{ text: '/test/', audio: 'https://audio.example.org/test.mp3', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Test.ogg', license: { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/' } }], meanings: [{ definitions: [{ definition: 'An original definition.' }] }] }]);
   assert.equal(result.source.url, 'https://en.wiktionary.org/wiki/test');

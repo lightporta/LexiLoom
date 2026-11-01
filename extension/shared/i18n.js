@@ -18,9 +18,10 @@
   }
   function fill(message, substitutions) {
     const values = Array.isArray(substitutions) ? substitutions : substitutions == null ? [] : [substitutions];
-    return values.reduce((text, value, index) => text.replaceAll(`$${index + 1}`, String(value)), message);
+    return message.replace(/\$(\d+)/g, (match, index) => Number(index) > 0 && Number(index) <= values.length ? String(values[Number(index) - 1]) : match);
   }
   function t(key, substitutions) {
+    if (typeof key !== 'string' || !/^[A-Za-z0-9_]+$/.test(key)) return '';
     const local = bundles[catalog()]?.[key]?.message;
     if (local) return fill(local, substitutions);
     try {

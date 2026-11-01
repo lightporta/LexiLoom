@@ -167,3 +167,91 @@ test('the English interface still keeps the Chinese reading and an English expla
   assert.equal(result.displayWord, '学习');
   assert.ok(calls.every(url => !url.includes('dictionaryapi.dev')));
 });
+
+test('a simplified character keeps its own meanings instead of being replaced by one converted character', async () => {
+  const calls = [];
+  const fetchImpl = async url => {
+    const href = String(url), query = decodeURIComponent(new URL(href).pathname.split('/').at(-1));
+    const english = href.includes('/v1/en/'); calls.push(query);
+    const definition = query === '干' ? english ? 'An original shield meaning.' : '原創測試：盾牌。'
+      : english ? 'An original trunk meaning.' : '原創測試：樹幹。';
+    return Response.json(wiki([definition], ['Mandarin'], [], [{ zh_pron: query === '干' ? 'gān' : 'gàn', tags: ['Mandarin', 'Pinyin'] }], 'noun'));
+  };
+  const result = await lookupChinese('干', { region: 'CN', fetchImpl });
+  assert.equal(result.status, 'ok');
+  assert.deepEqual(result.queryWords, ['干', '幹']);
+  assert.equal(result.displayWord, '干');
+  assert.deepEqual([...new Set(calls)], ['干', '幹']);
+  const definitions = result.meanings.flatMap(meaning => meaning.definitions.map(definition => definition.definition));
+  assert.ok(definitions.includes('An original shield meaning.'));
+  assert.ok(definitions.includes('An original trunk meaning.'));
+  assert.ok(result.source.components.some(source => source.url.endsWith(encodeURIComponent('干'))));
+  assert.ok(result.source.components.some(source => source.url.endsWith(encodeURIComponent('幹'))));
+  assert.match(result.notice, /并非全部字义/);
+  assert.match(result.notice, /乾/);
+  assert.match(result.notice, /幹/);
+  assert.doesNotMatch(result.notice, /干、干/);
+});
+
+test('ambiguous script conversion is disclosed even when the simplified form has no usable gloss', async () => {
+  const fetchImpl = async url => {
+    const query = decodeURIComponent(new URL(String(url)).pathname.split('/').at(-1));
+    return Response.json(query === '发' ? { entries: [{ senses: [{ tags: ['no-gloss'] }] }] }
+      : wiki(['Original fixture meaning.'], ['Mandarin'], [], [mandarinSound]));
+  };
+  const result = await lookupChinese('发', { region: 'CN', uiLanguage: 'en-US', fetchImpl });
+  assert.equal(result.status, 'ok');
+  assert.match(result.notice, /發/);
+  assert.match(result.notice, /髮/);
+  assert.match(result.notice, /not every sense/);
+});
+
+test('a response for the wrong word, edition or MOE title cannot become the requested entry', async () => {
+  for (const metadata of [{ edition: 'fr' }, { word: '錯詞' }, { word: null }, { edition: '' }]) {
+    const result = await lookupChinese('學習', { fetchImpl: async () => Response.json({ ...chineseWiki(), ...metadata }) });
+    assert.equal(result.status, 'error'); assert.equal(result.error.code, 'unsupported-format');
+  }
+  const result = await lookupChinese('學習', { region: 'TW', fetchImpl: async url => String(url).includes('moedict')
+    ? Response.json({ ...moe, title: '錯詞' }) : absent('wiki') });
+  assert.equal(result.status, 'error'); assert.equal(result.error.code, 'unsupported-format');
+});
+
+test('pronunciations from another word language do not leak into the Chinese card or its attributions', async () => {
+  const wrongLanguage = { entries: [{ lang_code: 'ja', senses: [{ glosses: ['Wrong language.'] }], sounds: [{ zh_pron: 'wrong', tags: ['Mandarin', 'Pinyin'] }] }] };
+  const result = await lookupChinese('學習', { fetchImpl: async url => Response.json(String(url).includes('/v1/zh/') ? wrongLanguage : englishWiki()) });
+  assert.equal(result.status, 'ok');
+  assert.equal(result.phonetic, 'xué xí');
+  assert.ok(result.pronunciations.every(sound => sound.phonetic !== 'wrong'));
+  assert.ok(result.source.components.every(source => source.id !== 'wiktionary-zh-zh'));
+});
+
+test('Taiwan supplements missing MOE Zhuyin from Wiktionary and credits the reading source', async () => {
+  const partialMoe = { heteronyms: [{ pinyin: 'xué xí', definitions: [{ def: moeText }] }] };
+  const { fetchImpl } = route({ zh: chineseWiki(), en: englishWiki(), moe: partialMoe });
+  const result = await lookupChinese('學習', { region: 'TW', fetchImpl });
+  assert.equal(result.source.id, 'moe');
+  assert.equal(result.meanings.find(meaning => meaning.origin === 'moe').definitions[0].definition, moeText);
+  assert.match(result.phonetic, /ㄒ/);
+  assert.equal(result.pronunciations[0].label, '注音 · 維基詞典');
+  assert.ok(result.pronunciations.some(sound => sound.label === '漢語拼音 · 臺灣'));
+  assert.ok(result.source.components.some(source => source.id === 'wiktionary-zh-zh'));
+});
+
+test('a MOE reading without a MOE definition is still attributed independently', async () => {
+  const partialMoe = { heteronyms: [{ bopomofo: 'ㄒㄩㄝˊ ㄒㄧˊ', pinyin: 'xué xí', definitions: [] }] };
+  const { fetchImpl } = route({ zh: chineseWiki(), en: englishWiki(), moe: partialMoe });
+  const result = await lookupChinese('學習', { region: 'TW', fetchImpl });
+  assert.equal(result.source.id, 'wiktionary-zh-zh');
+  assert.ok(result.meanings.every(meaning => meaning.origin !== 'moe'));
+  assert.ok(result.source.components.some(source => source.id === 'moe' && source.license.name.includes('ND')));
+});
+
+test('Chinese lookup requires confirmed absence from every queried source', async () => {
+  const absentResult = await lookupChinese('測試', { fetchImpl: async () => absent('wiki') });
+  assert.equal(absentResult.status, 'not-found');
+  for (const response of [() => new Response('{}', { status: 404 }), () => new Response('', { status: 429 }), () => { throw new Error('private failure'); }]) {
+    const result = await lookupChinese('測試', { fetchImpl: async url => String(url).includes('/v1/en/') ? response() : absent('wiki') });
+    assert.equal(result.status, 'error');
+    assert.equal(JSON.stringify(result).includes('private failure'), false);
+  }
+});

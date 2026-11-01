@@ -100,7 +100,8 @@ function wiktionaryAudioAttribution(sound) {
 }
 
 export function normalizeWiktionary(word, payload) {
-  if (!Array.isArray(payload?.entries) || (payload.edition && payload.edition !== 'zh')) return providerError(word, 'wiktionary', 'unsupported-format', '中文词源返回的数据格式暂不支持，请打开原词典查看。');
+  if (!Array.isArray(payload?.entries) || (payload.edition !== undefined && payload.edition !== 'zh')
+    || (payload.word !== undefined && (typeof payload.word !== 'string' || payload.word.toLowerCase() !== word.toLowerCase()))) return providerError(word, 'wiktionary', 'unsupported-format', '中文词源返回的数据格式暂不支持，请打开原词典查看。');
   const pronunciations = [];
   const meanings = [];
   for (const entry of payload.entries.slice(0, 8)) {

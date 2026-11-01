@@ -1,67 +1,59 @@
+import '../shared/languages.js';
 import '../shared/locale.js';
 import '../shared/core.js';
 import '../shared/present.js';
 import '../shared/demo-data.js';
 import { lookupFree, lookupWiktionary, lookupSmart, readJsonLimited } from '../shared/providers.js';
 import { lookupChinese, localizeChineseEntry } from '../shared/chinese.js';
+import { createDictionaryEngine } from '../shared/dictionary.js';
 
-const { DEFAULT_SETTINGS, normalizeWord, wordLanguage, publicSettings } = globalThis.LexiLoomCore;
+const { DEFAULT_SETTINGS, normalizeWord, publicSettings } = globalThis.LexiLoomCore;
 const BRIDGE = 'http://127.0.0.1:47821';
-let lookupActive = 0;
-const lookupWaiters = [];
-async function withLookupSlot(task) {
-  if (lookupActive >= 4) await new Promise(resolve => lookupWaiters.push(resolve));
-  else lookupActive++;
-  try { return await task(); }
-  finally {
-    const next = lookupWaiters.shift();
-    if (next) next();
-    else lookupActive--;
-  }
-}
 const settingsReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 async function getSettings() {
   await settingsReady;
   return { ...DEFAULT_SETTINGS, ...(await chrome.storage.local.get('settings')).settings };
 }
 function errorResult(word, code, message, provider = '') {
-  return { word, status: 'error', error: { code, message }, source: { id: provider, name: provider, url: '' } };
+  const context = globalThis.LexiLoomLanguages.registry.lookupContext(word, { uiLanguage: interfaceLanguage() }) || { word: '' };
+  return globalThis.LexiLoomEntry.normalizeDictionaryEntry({ word, status: 'error', error: { code, message }, source: { id: provider, name: provider, url: '' } }, context);
 }
 function interfaceLanguage() {
   return globalThis.LexiLoomLocale.languageTag();
 }
-async function lookup(word) {
-  const settings = await getSettings();
-  const uiLanguage = interfaceLanguage();
-  const profile = globalThis.LexiLoomLocale.profile(uiLanguage, settings.chineseRegion);
-  if (!settings.enabled) return errorResult(word, 'disabled', '查词已暂停。');
-  if (wordLanguage(word) === 'zh') return withLookupSlot(() => lookupChinese(word, { region: profile.region, uiLanguage }));
-  const provider = globalThis.LexiLoomPresent.resolveLookupProvider(settings, uiLanguage);
-  const result = await lookupEnglish(word, settings, provider);
-  return profile.language === 'en' ? result : localizeChineseEntry(result, profile.region);
-}
-async function lookupEnglish(word, settings, provider) {
-  if (provider === 'demo') return globalThis.LexiLoomDemo.lookup(word);
-  if (provider === 'smart') return withLookupSlot(() => lookupSmart(word));
-  if (provider === 'wiktionary') return withLookupSlot(() => lookupWiktionary(word));
-  if (provider === 'free') return withLookupSlot(() => lookupFree(word));
+async function lookupOfficial(word, { settings, adapterId: provider, fetchImpl }) {
   if (!settings.bridgeToken) return errorResult(word, 'not-configured', '请先在设置中连接本地词典服务。', provider);
-  return withLookupSlot(async () => { try {
+  try {
     const url = new URL('/v1/lookup', BRIDGE);
     url.searchParams.set('provider', provider);
     url.searchParams.set('word', word);
-    const response = await fetch(url, {
+    const response = await fetchImpl(url, {
       headers: { Authorization: `Bearer ${settings.bridgeToken}` },
       signal: AbortSignal.timeout(14000), cache: 'no-store', credentials: 'omit', redirect: 'error'
     });
     if (response.status === 401 || response.status === 403) return errorResult(word, 'bridge-auth', '本地服务连接口令不正确，请检查设置。', provider);
     if (response.status === 429) return errorResult(word, 'bridge-busy', '本地词典服务繁忙，请稍后重试。', provider);
-    const result = await response.json();
+    const result = await readJsonLimited(response);
     if (!['ok', 'not-found', 'error'].includes(result?.status)) throw new Error('invalid-response');
     return result;
   } catch {
     return errorResult(word, 'bridge-unavailable', '无法连接本地词典服务，请确认服务正在运行。', provider);
-  } });
+  }
+}
+const dictionaries = createDictionaryEngine({
+  adapters: {
+    demo: word => globalThis.LexiLoomDemo.lookup(word),
+    smart: (word, { fetchImpl }) => lookupSmart(word, { fetchImpl }),
+    wiktionary: (word, { fetchImpl }) => lookupWiktionary(word, { fetchImpl }),
+    free: (word, { fetchImpl }) => lookupFree(word, { fetchImpl }),
+    chinese: (word, { region, uiLanguage, fetchImpl }) => lookupChinese(word, { region, uiLanguage, fetchImpl }),
+    oxford: lookupOfficial, cambridge: lookupOfficial
+  },
+  localize: (entry, context) => context.profile.localizeForUi?.(context.ui)
+    ? localizeChineseEntry(entry, context.ui.region) : entry
+});
+async function lookup(word) {
+  return dictionaries.lookup(word, { settings: await getSettings(), uiLanguage: interfaceLanguage() });
 }
 const pageNames = new Set(['popup.html', 'options.html', 'try.html']);
 function isExtensionPage(sender) {
@@ -72,6 +64,21 @@ function isExtensionPage(sender) {
 }
 let pending = 0;
 const catalogs = new Map();
+let settingsWrites = Promise.resolve();
+function saveSettings(incoming) {
+  const operation = settingsWrites.then(async () => {
+    const next = { ...await getSettings() };
+    if (typeof incoming.enabled === 'boolean') next.enabled = incoming.enabled;
+    if (typeof incoming.bridgeToken === 'string') next.bridgeToken = incoming.bridgeToken.trim().slice(0, 512);
+    if (globalThis.LexiLoomLanguages.PROVIDERS.includes(incoming.provider)) next.provider = incoming.provider;
+    if (globalThis.LexiLoomLanguages.ENGLISH_PROVIDERS.includes(incoming.englishProvider)) next.englishProvider = incoming.englishProvider;
+    if (['auto', 'CN', 'HK', 'TW'].includes(incoming.chineseRegion)) next.chineseRegion = incoming.chineseRegion;
+    await chrome.storage.local.set({ settings: next });
+    return { ok: true };
+  });
+  settingsWrites = operation.catch(() => {});
+  return operation;
+}
 async function getCatalog(name) {
   if (!['en', 'zh_CN', 'zh_TW'].includes(name)) return { error: 'invalid-catalog' };
   if (!catalogs.has(name)) {
@@ -105,15 +112,7 @@ async function handle(message, sender) {
   if (!isExtensionPage(sender)) return { error: 'unauthorized' };
   if (message.type === 'GET_PRIVATE_SETTINGS') return getSettings();
   if (message.type === 'SAVE_SETTINGS') {
-    const old = await getSettings();
-    const incoming = message.settings || {};
-    const next = { ...old, enabled: incoming.enabled !== false };
-    if (typeof incoming.bridgeToken === 'string') next.bridgeToken = incoming.bridgeToken.trim().slice(0, 512);
-    if (['smart', 'wiktionary', 'demo', 'free', 'oxford', 'cambridge'].includes(incoming.provider)) next.provider = incoming.provider;
-    if (globalThis.LexiLoomPresent.ENGLISH_PROVIDERS.includes(incoming.englishProvider)) next.englishProvider = incoming.englishProvider;
-    if (['auto', 'CN', 'HK', 'TW'].includes(incoming.chineseRegion)) next.chineseRegion = incoming.chineseRegion;
-    await chrome.storage.local.set({ settings: next });
-    return { ok: true };
+    return saveSettings(message.settings && typeof message.settings === 'object' ? message.settings : {});
   }
   if (message.type === 'CHECK_BRIDGE' || message.type === 'LIST_DICTIONARIES') {
     const settings = await getSettings();

@@ -17,6 +17,8 @@ Chrome 140 or newer. The same extension runs on Windows, macOS and Linux. There 
 
 The toolbar icon opens settings, and a page where you can try the cards before reading anything.
 
+Packaging also writes a `-store.zip` with `manifest.json` at the root for a future store submission.
+
 ## Use
 
 Click a headword to open the card, and click it again to close it. Hold Ctrl (⌘ on a Mac) and double-click another word to add it to the same group, up to 8. The × on a card removes that word. The × at the top, Esc, or a click on empty page closes the whole group.
@@ -30,6 +32,8 @@ Chinese and English use the same card. The interface follows Chrome's language. 
 - Traditional Chinese, Hong Kong: traditional definitions, with Jyutping that the source marks as Hong Kong. A Mandarin reading, when there is one, is labeled as a supplement.
 
 OpenCC only changes how Wiktionary text is displayed and which spelling is searched. A mainland entry with its characters converted is still a mainland entry. If Chrome only offers one Traditional Chinese and cannot tell Hong Kong from Taiwan, pick the region in settings.
+
+Some simplified characters have several traditional counterparts. For a character such as “干”, the card keeps the original lookup and names the converted spelling it also checked. This does not cover every possible sense; selecting a complete word gives more context.
 
 In the English interface, an English word shows the English definition, pronunciation and examples. A Chinese word still keeps its Chinese spelling and reading.
 
@@ -49,13 +53,13 @@ Chinese words follow the region:
 - The English explanation comes from the Chinese entry in English Wiktionary.
 - [Free Dictionary](https://dictionaryapi.dev/) supplies the English definition and audio for English words.
 - Oxford and Cambridge are optional. They need your own official access and the local dictionary service. See [bridge/README.en.md](bridge/README.en.md).
-- The local demo is a handful of sample sentences written for this project, so you can try the cards. It does not query a dictionary.
+- The English demo entries are written for this project. The Chinese practice section uses online dictionaries.
 
 Source links, example references and license links stay at the bottom of the card. Coverage differs by dictionary. Attribution is in [THIRD_PARTY.en.md](THIRD_PARTY.en.md). A lookup sends the word you selected. It does not upload the page or keep a history. See [Privacy](PRIVACY.en.md).
 
 ## Development
 
-Node.js 22 or newer. The extension has no third-party runtime dependencies. Playwright is only there for the browser tests.
+Node.js 22 or newer. The extension loads on its own and includes OpenCC. The local service and packager need no npm runtime dependencies. Playwright is for the browser tests.
 
 ```sh
 npm ci
@@ -71,11 +75,12 @@ Browser tests:
 npx --no-install playwright-core install chromium
 npm run test:browser
 npm run test:browser:locales
+npm run test:browser:ui
 ```
 
 On Linux, install Chromium with `install --with-deps chromium`. Tests use fixed samples unless you set `LEXILOOM_LIVE_TESTS=1`.
 
-Launchers and CI are in the [cross-platform notes](docs/CROSS_PLATFORM.en.md). Recorded results are in [docs/VALIDATION.md](docs/VALIDATION.md). Release notes are in [CHANGELOG.en.md](CHANGELOG.en.md).
+Launchers and CI are in the [cross-platform notes](docs/CROSS_PLATFORM.en.md). Recorded results are in [docs/VALIDATION.md](docs/VALIDATION.md). The [architecture notes](docs/ARCHITECTURE.en.md) describe language profiles, adapters and the card contract. Release notes are in [CHANGELOG.en.md](CHANGELOG.en.md).
 
 ## License
 

@@ -1,0 +1,125 @@
+{
+  "version": "0.3.1",
+  "date": "2026-11-01",
+  "mode": "live API requests through the shared dictionary engine",
+  "entries": [
+    {
+      "word": "学习",
+      "uiLanguage": "zh-CN",
+      "region": "CN",
+      "status": "ok",
+      "phonetic": "xuéxí",
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "examples": 2,
+      "queryWords": [
+        "學習"
+      ],
+      "sources": [
+        "https://zh.wiktionary.org/wiki/%E5%AD%B8%E7%BF%92",
+        "https://zh.wiktionary.org/wiki/%E5%AD%B8%E7%BF%92",
+        "https://en.wiktionary.org/wiki/%E5%AD%B8%E7%BF%92#Chinese"
+      ]
+    },
+    {
+      "word": "你好",
+      "uiLanguage": "zh-HK",
+      "region": "HK",
+      "status": "ok",
+      "phonetic": "nei⁵ hou²",
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "examples": 1,
+      "queryWords": [
+        "你好"
+      ],
+      "sources": [
+        "https://zh.wiktionary.org/wiki/%E4%BD%A0%E5%A5%BD",
+        "https://zh.wiktionary.org/wiki/%E4%BD%A0%E5%A5%BD",
+        "https://en.wiktionary.org/wiki/%E4%BD%A0%E5%A5%BD#Chinese"
+      ]
+    },
+    {
+      "word": "學習",
+      "uiLanguage": "zh-TW",
+      "region": "TW",
+      "status": "ok",
+      "phonetic": "ㄒㄩㄝˊ ㄒㄧˊ",
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "examples": 2,
+      "queryWords": [
+        "學習"
+      ],
+      "sources": [
+        "https://www.moedict.tw/#%E5%AD%B8%E7%BF%92",
+        "https://www.moedict.tw/#%E5%AD%B8%E7%BF%92",
+        "https://en.wiktionary.org/wiki/%E5%AD%B8%E7%BF%92#Chinese"
+      ]
+    },
+    {
+      "word": "干",
+      "uiLanguage": "zh-CN",
+      "region": "CN",
+      "status": "ok",
+      "phonetic": "gān (gan¹)",
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "examples": 2,
+      "queryWords": [
+        "干",
+        "幹"
+      ],
+      "notice": "单字“干”可能涉及干、乾、幹、榦等字形；本次分别查询原字和“幹”，并非全部字义，建议选完整词语。",
+      "sources": [
+        "https://zh.wiktionary.org/wiki/%E5%B9%B2",
+        "https://zh.wiktionary.org/wiki/%E5%B9%B2",
+        "https://zh.wiktionary.org/wiki/%E5%B9%B9",
+        "https://en.wiktionary.org/wiki/%E5%B9%B2#Chinese",
+        "https://en.wiktionary.org/wiki/%E5%B9%B9#Chinese"
+      ]
+    },
+    {
+      "word": "學習",
+      "uiLanguage": "en-US",
+      "region": "TW",
+      "status": "ok",
+      "phonetic": "ㄒㄩㄝˊ ㄒㄧˊ",
+      "languages": [
+        "en",
+        "zh"
+      ],
+      "examples": 2,
+      "queryWords": [
+        "學習"
+      ],
+      "sources": [
+        "https://www.moedict.tw/#%E5%AD%B8%E7%BF%92",
+        "https://www.moedict.tw/#%E5%AD%B8%E7%BF%92",
+        "https://en.wiktionary.org/wiki/%E5%AD%B8%E7%BF%92#Chinese"
+      ]
+    },
+    {
+      "word": "apple",
+      "uiLanguage": "en-US",
+      "region": "CN",
+      "status": "ok",
+      "phonetic": "/ˈæp.əl/",
+      "languages": [
+        "en"
+      ],
+      "examples": 0,
+      "sources": [
+        "https://en.wiktionary.org/wiki/apple"
+      ]
+    }
+  ]
+}

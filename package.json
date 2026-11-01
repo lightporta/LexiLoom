@@ -1,6 +1,6 @@
 {
   "name": "lexiloom",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -17,7 +17,8 @@
     "bridge": "node --env-file=bridge/.env bridge/server.js",
     "package": "node tools/package.js",
     "test:browser:locales": "node tools/browser-locale-qa.js",
-    "locales": "node tools/build-locales.js"
+    "locales": "node tools/build-locales.js",
+    "test:browser:ui": "node tools/browser-ui-qa.js"
   },
   "devDependencies": {
     "playwright-core": "1.64.1"

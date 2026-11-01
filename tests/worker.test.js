@@ -30,7 +30,11 @@ test('only extension pages can change settings and private token remains local',
 });
 test('worker validates source identity and lookup words', async () => {
   assert.equal((await send({ type: 'LOOKUP', word: 'apple' }, { id: 'other' })).error, 'unauthorized');
-  assert.equal((await send({ type: 'LOOKUP', word: 'https://example.com' })).error.code, 'invalid-word');
+  const invalid = await send({ type: 'LOOKUP', word: 'https://example.com' });
+  assert.equal(invalid.error.code, 'invalid-word');
+  assert.deepEqual(invalid.pronunciations, []);
+  assert.deepEqual(invalid.meanings, []);
+  assert.equal(typeof invalid.language, 'string');
   assert.equal((await send({ type: 'LOOKUP', word: 'APPLE' })).status, 'ok');
 });
 test('eight official lookups queue at most four bridge requests', async () => {
@@ -102,4 +106,31 @@ test('saving the english dictionary does not replace the chinese provider', asyn
   assert.equal(stored.provider, 'wiktionary');
   assert.equal(stored.englishProvider, 'demo');
   stored = { enabled: true, provider: 'demo', bridgeToken: stored.bridgeToken };
+});
+test('partial and simultaneous settings saves preserve pause state and independent preferences', async () => {
+  stored = { enabled: false, provider: 'wiktionary', englishProvider: 'free', chineseRegion: 'auto', bridgeToken: 'private-bridge-token-is-long-enough' };
+  const oldGet = chrome.storage.local.get, oldSet = chrome.storage.local.set;
+  chrome.storage.local.get = async () => { await new Promise(resolve => setTimeout(resolve, 3)); return { settings: { ...stored } }; };
+  chrome.storage.local.set = async value => { await new Promise(resolve => setTimeout(resolve, 3)); stored = value.settings; };
+  try {
+    const responses = await Promise.all([
+      send({ type: 'SAVE_SETTINGS', settings: { englishProvider: 'demo' } }, options),
+      send({ type: 'SAVE_SETTINGS', settings: { chineseRegion: 'HK' } }, options)
+    ]);
+    assert.ok(responses.every(value => value.ok));
+    assert.equal(stored.enabled, false);
+    assert.equal(stored.provider, 'wiktionary');
+    assert.equal(stored.englishProvider, 'demo');
+    assert.equal(stored.chineseRegion, 'HK');
+    assert.equal(stored.bridgeToken, 'private-bridge-token-is-long-enough');
+  } finally {
+    chrome.storage.local.get = oldGet; chrome.storage.local.set = oldSet;
+    stored = { enabled: true, provider: 'demo', bridgeToken: stored.bridgeToken };
+  }
+});
+test('catalog requests cannot access a non-catalog extension path', async () => {
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error('No network request should occur for an invalid catalog.'); };
+  try { assert.equal((await send({ type: 'GET_CATALOG', catalog: '../../bridge/.env' })).error, 'invalid-catalog'); }
+  finally { globalThis.fetch = oldFetch; }
 });

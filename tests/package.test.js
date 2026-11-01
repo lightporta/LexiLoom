@@ -73,7 +73,7 @@ test('ZIP writer rejects traversal, Windows paths and ambiguous duplicate names'
   assert.throws(() => createZip([{ name: 'é', data: Buffer.alloc(0) }, { name: 'e\u0301', data: Buffer.alloc(0) }]), /Duplicate/);
 });
 
-test('packaging works in a spaced path, reads version and excludes credentials/OS metadata', async t => {
+test('both package layouts work in a spaced path and exclude credentials/OS metadata', async t => {
   const root = await mkdtemp(join(tmpdir(), 'LexiLoom package with spaces '));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, 'extension/ui'), { recursive: true });
@@ -90,14 +90,24 @@ test('packaging works in a spaced path, reads version and excludes credentials/O
   const first = await packageExtension({ projectRoot: root, runCheck: false, log: () => {} });
   assert.equal(first.version, '2.4.6');
   assert.ok(first.archivePath.endsWith('LexiLoom-2.4.6-chrome.zip'));
+  assert.ok(first.storeArchivePath.endsWith('LexiLoom-2.4.6-store.zip'));
   const bytes = await readFile(first.archivePath);
+  const storeBytes = await readFile(first.storeArchivePath);
   const contents = readZip(bytes);
+  const storeContents = readZip(storeBytes);
   assert.deepEqual([...contents.keys()], ['LexiLoom/manifest.json', 'LexiLoom/ui/词典.txt']);
+  assert.deepEqual([...storeContents.keys()], ['manifest.json', 'ui/词典.txt']);
+  assert.equal(contents.has('manifest.json'), false);
+  assert.equal(storeContents.has('manifest.json'), true);
+  for (const [name, data] of storeContents) assert.deepEqual(data, contents.get(`LexiLoom/${name}`));
   assert.ok(!bytes.includes(Buffer.from('secret=')));
+  assert.ok(!storeBytes.includes(Buffer.from('secret=')));
+  assert.equal(first.storeSize, storeBytes.length);
   assert.equal((await stat(join(first.folder, 'manifest.json'))).isFile(), true);
   await utimes(join(root, 'extension/manifest.json'), new Date(0), new Date(0));
   const second = await packageExtension({ projectRoot: root, runCheck: false, log: () => {} });
   assert.deepEqual(await readFile(second.archivePath), bytes, 'mtimes must not affect the ZIP');
+  assert.deepEqual(await readFile(second.storeArchivePath), storeBytes, 'mtimes must not affect the store ZIP');
 });
 
 test('packaging rejects links to files outside the extension', { skip: process.platform === 'win32' ? 'Windows symlinks can require elevated privileges.' : false }, async t => {
