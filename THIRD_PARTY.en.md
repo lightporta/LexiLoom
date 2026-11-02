@@ -12,6 +12,8 @@ Cards link to the original entry and show “Chinese Wiktionary, excerpted via W
 
 The Chinese entry in English Wiktionary is also read through WiktApi, so a Chinese word can show an English explanation. That text is CC BY-SA 4.0 as well.
 
+Japanese, Korean, French, German and Spanish cards use entries for those languages in Chinese Wiktionary, with the same license and original-entry attribution. OpenCC converts Chinese glosses and Chinese example translations to Simplified spelling, as noted on the card. Original headwords and source-language examples are not converted. Missing or unreliable examples are not reconstructed.
+
 Wikimedia Commons audio is licensed separately from the entry text. Cards link to the File description page for author, source, and license. They do not assume every audio file is CC BY-SA 4.0.
 
 ## Ministry of Education dictionary / Moedict

@@ -63,6 +63,7 @@
       provider: typeof source.provider === "string" ? source.provider : "smart",
       englishProvider: typeof source.englishProvider === "string" ? source.englishProvider : "free",
       chineseRegion: typeof source.chineseRegion === "string" ? source.chineseRegion : "auto",
+      targetLanguage: globalThis.LexiLoomLanguages.TARGET_LANGUAGES.includes(source.targetLanguage) ? source.targetLanguage : "auto",
       guidance: globalThis.LexiLoomGuidance?.publicSettings(source) || { disabled: [], custom: [] }
     };
   }
@@ -154,15 +155,19 @@
     clearTimeout(selectionTimer);
   }
 
-  function snapshot() {
+  function captureSelection() {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || !selection.rangeCount) return null;
-    const parsed = core.parseSelection(selection.toString(), i18n?.languageTag() || 'zh-CN');
-    if (!parsed.words.length) return null;
     const range = selection.getRangeAt(0).cloneRange();
     const rect = range.getBoundingClientRect();
     if (!rect.width && !rect.height) return null;
-    return { ...parsed, rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }, range };
+    return { text: selection.toString(), rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }, range };
+  }
+
+  function snapshot(raw) {
+    if (!raw) return null;
+    const parsed = core.parseSelection(raw.text, i18n?.languageTag() || 'zh-CN', settings.targetLanguage);
+    return parsed.words.length ? { ...raw, ...parsed } : null;
   }
 
   function positionPanel() {
@@ -342,7 +347,8 @@
     const entry = view?.entry;
     // A missing headword still gets links ("open the original site" fallback);
     // only transport/schema errors must stay free of third-party links.
-    if (!guidance || !locale?.profile || !entry || (entry.status !== "ok" && entry.status !== "not-found")) return null;
+    if (!guidance || !locale?.profile || !entry || (entry.status !== "ok" && entry.status !== "not-found"
+      && entry.error?.code !== "translation-unavailable")) return null;
     const uiLanguage = i18n?.languageTag() || "zh-CN";
     const profile = locale.profile(uiLanguage, settings.chineseRegion);
     if (!profile) return null;
@@ -510,7 +516,7 @@
     } else {
       card.summaryText.textContent = result.status === "not-found" ? t(view.notFoundKey) : errorText(result);
       card.details.replaceChildren(element("div", "divider"), element("p", "definition", result.status === "not-found" ? t("notFoundHint") : t("errorRetryHint")));
-      if (result.status === "not-found") renderGuidance(card);
+      if (result.status === "not-found" || result.error?.code === "translation-unavailable") renderGuidance(card);
       const actions = element("div", "state-actions");
       if (result.status !== "not-found") actions.append(button("text-button", t("retry"), undefined, () => loadCard(card)));
       actions.append(button("text-button", t("openSettings"), undefined, () => { void Promise.resolve(bridge.options()).catch(() => {}); }));
@@ -527,6 +533,13 @@
     card.summaryText.classList.add("loading");
     card.summaryText.textContent = t("loading");
     card.lookupNotice.hidden = true;
+    // A new source language invalidates the previous reading and examples as
+    // well as its summary. Keep the card open without exposing stale controls.
+    card.view = null;
+    card.details.replaceChildren();
+    card.phonetic.textContent = "";
+    card.sourceLabel.textContent = t("querying");
+    card.article.querySelector(".state-actions")?.remove();
     try {
       const result = await bridge.lookup(card.word);
       if (lookupSession !== session || cards.get(card.word) !== card || version !== card.version) return;
@@ -547,7 +560,9 @@
     anchorSide = null;
     let truncated = Boolean(selection.truncated);
     for (const word of selection.words) {
-      if (cards.has(word)) continue;
+      // A language switch can change canonical case (German → automatic
+      // English). Compare in the current mode before appending to the chain.
+      if ([...cards.values()].some(card => core.normalizeWord(card.word, settings.targetLanguage) === word)) continue;
       if (cards.size >= (core.MAX_WORDS || 8)) { truncated = true; break; }
       const card = makeCard(word);
       void loadCard(card);
@@ -564,7 +579,7 @@
       const selected = launcherSnapshot;
       const selectionSession = session;
       await refreshSettings();
-      if (enabled && selectionSession === session) showWords(selected);
+      if (enabled && selectionSession === session) showWords(snapshot(selected));
     });
     launcher.append(element("span", "launcher-brand", "L"), element("span", "", t("launcherCount", [String(selection.words.length)])), element("span", "", "↗"));
     launcher.addEventListener("pointerdown", event => { event.preventDefault(); event.stopPropagation(); });
@@ -581,22 +596,25 @@
     if (isInternal(event) || isEditable(event)) return;
     clearTimeout(selectionTimer);
     hideLauncher();
-    const selection = snapshot();
+    const raw = captureSelection();
     const selectionSession = session;
     await refreshSettings();
-    if (!selection || !enabled || selectionSession !== session) return;
+    if (!raw || !enabled || selectionSession !== session) return;
+    const selection = snapshot(raw);
+    if (!selection) return;
     showWords(selection, event.ctrlKey || event.metaKey);
   }, true);
 
   document.addEventListener("mouseup", event => {
     if ((!event.isTrusted && !preview) || isInternal(event) || isEditable(event) || event.button !== 0) return;
     clearTimeout(selectionTimer);
-    const selection = snapshot();
-    if (!selection) { hideLauncher(); return; }
+    const raw = captureSelection();
+    if (!raw) { hideLauncher(); return; }
     const selectionSession = session;
     selectionTimer = setTimeout(async () => {
       await refreshSettings();
-      if (enabled && selectionSession === session && !window.getSelection()?.isCollapsed) showLauncher(selection);
+      const selection = snapshot(raw);
+      if (selection && enabled && selectionSession === session && window.getSelection()?.toString() === raw.text) showLauncher(selection);
     }, 220);
   }, true);
 
@@ -623,7 +641,9 @@
     const previous = settings;
     applySettings(value);
     if (!enabled) { closePanel(); return; }
-    const sourceChanged = ["provider", "englishProvider", "chineseRegion"].some(key => previous[key] !== settings[key]);
+    const sourceChanged = ["provider", "englishProvider", "chineseRegion", "targetLanguage"].some(key => previous[key] !== settings[key]);
+    if (sourceChanged) stopAudio();
+    if (previous.targetLanguage !== settings.targetLanguage) hideLauncher();
     const guidanceChanged = JSON.stringify(previous.guidance) !== JSON.stringify(settings.guidance);
     if (!sourceChanged && !guidanceChanged) return;
     for (const card of cards.values()) {

@@ -1,6 +1,6 @@
 {
   "name": "lexiloom",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -19,7 +19,9 @@
     "test:browser:locales": "node tools/browser-locale-qa.js",
     "locales": "node tools/build-locales.js",
     "test:browser:ui": "node tools/browser-ui-qa.js",
-    "test:browser:navigation": "node tools/browser-navigation-qa.js"
+    "test:browser:navigation": "node tools/browser-navigation-qa.js",
+    "test:browser:multilingual": "node tools/browser-multilingual-qa.js",
+    "test:browser:multilingual:live": "node tools/browser-multilingual-live-qa.js"
   },
   "devDependencies": {
     "playwright-core": "1.64.1"

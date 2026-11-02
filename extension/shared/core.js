@@ -4,13 +4,13 @@
   const MAX_WORDS = 8;
   const languages = globalThis.LexiLoomLanguages;
   const { normalizeWord, wordLanguage } = languages.registry;
-  function parseSelection(text, language = 'zh-CN') {
+  function parseSelection(text, language = 'zh-CN', targetLanguage = 'auto') {
     if (typeof text !== 'string' || !text.trim()) return { words: [], truncated: false, reason: 'empty' };
     if (text.length > 1000) return { words: [], truncated: false, reason: 'too-long' };
     const tokens = text.normalize('NFKC').replace(/[’‘]/g, "'")
       .replace(/(?:https?:\/\/|www\.)[^\s]+|[^\s@]+@[^\s@]+/gi, ' ')
       .split(/[\s,;.!?，。；！？、()[\]{}:"“”]+/u).filter(Boolean);
-    const selected = tokens.flatMap(token => languages.registry.splitToken(token.replace(/^'+|'+$/g, ''), language));
+    const selected = tokens.flatMap(token => languages.registry.splitToken(token.replace(/^'+|'+$/g, ''), language, targetLanguage));
     const words = [...new Set(selected)];
     return { words: words.slice(0, MAX_WORDS), truncated: words.length > MAX_WORDS,
       reason: words.length ? undefined : 'unsupported' };
@@ -21,11 +21,12 @@
       return url.protocol === 'https:' && !url.username && !url.password ? url.href : '';
     } catch { return ''; }
   }
-  const DEFAULT_SETTINGS = Object.freeze({ enabled: true, provider: 'smart', englishProvider: 'free', chineseRegion: 'auto', bridgeToken: '' });
+  const DEFAULT_SETTINGS = Object.freeze({ enabled: true, provider: 'smart', englishProvider: 'free', chineseRegion: 'auto', targetLanguage: 'auto', bridgeToken: '' });
   function publicSettings(settings = {}) {
     return { enabled: settings.enabled !== false, chineseRegion: ['CN', 'HK', 'TW'].includes(settings.chineseRegion) ? settings.chineseRegion : 'auto',
       provider: languages.PROVIDERS.includes(settings.provider) ? settings.provider : 'smart',
-      englishProvider: languages.ENGLISH_PROVIDERS.includes(settings.englishProvider) ? settings.englishProvider : 'free' };
+      englishProvider: languages.ENGLISH_PROVIDERS.includes(settings.englishProvider) ? settings.englishProvider : 'free',
+      targetLanguage: languages.TARGET_LANGUAGES.includes(settings.targetLanguage) ? settings.targetLanguage : 'auto' };
   }
   globalThis.LexiLoomCore = Object.freeze({ MAX_WORDS, normalizeWord, wordLanguage, parseSelection, safeHttps, DEFAULT_SETTINGS, publicSettings });
 })();

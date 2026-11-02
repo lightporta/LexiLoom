@@ -9,6 +9,7 @@ const enabled = document.querySelector('#enabled');
 const token = document.querySelector('#bridge-token');
 const status = document.querySelector('#save-status');
 const chineseRegion = document.querySelector('#chinese-region');
+const targetLanguage = document.querySelector('#target-language');
 const guidanceGroups = document.querySelector('#guidance-groups');
 const guidanceCustom = document.querySelector('#guidance-custom');
 const guidanceStatus = document.querySelector('#guidance-status');
@@ -35,10 +36,14 @@ for (const option of provider.options) {
   option.disabled = english && chineseOnly;
 }
 function showProvider() {
-  document.querySelector('#source-note').textContent = t(notes[provider.value] || 'noteFree');
-  document.querySelector('#bridge-section').hidden = !['oxford', 'cambridge'].includes(provider.value);
+  const multilingual = targetLanguage.value !== 'auto';
+  document.querySelector('#source-note').textContent = t(multilingual ? 'noteMultilingual' : notes[provider.value] || 'noteFree');
+  document.querySelector('#bridge-section').hidden = multilingual || !['oxford', 'cambridge'].includes(provider.value);
+  provider.disabled = multilingual || !loaded;
+  chineseRegion.disabled = multilingual || !loaded;
 }
 provider.addEventListener('change', showProvider);
+targetLanguage.addEventListener('change', showProvider);
 function bridgeFailure(result) {
   if (result?.code === 'http_status') return t('error_http_status', [String(result.status)]);
   return t(`error_${result?.code || ''}`) || result?.message || t('bridgeCheckFailed');
@@ -91,6 +96,7 @@ async function load() {
       : settings.provider;
     token.value = settings.bridgeToken || '';
     chineseRegion.value = ['CN', 'HK', 'TW'].includes(settings.chineseRegion) ? settings.chineseRegion : 'auto';
+    targetLanguage.value = globalThis.LexiLoomLanguages.TARGET_LANGUAGES.includes(settings.targetLanguage) ? settings.targetLanguage : 'auto';
     renderGuidance(settings);
     showRegion();
     showProvider();
@@ -99,10 +105,11 @@ async function load() {
     for (const control of controls) control.disabled = false;
     // Keep Chinese-only providers unavailable in an English interface.
     for (const option of provider.options) option.disabled = english && ['smart', 'wiktionary'].includes(option.value);
+    showProvider();
   } catch { status.textContent = t('readFailed'); status.dataset.error = 'true'; }
 }
 function formSettings() {
-  const settings = { enabled: enabled.checked, bridgeToken: token.value, chineseRegion: chineseRegion.value };
+  const settings = { enabled: enabled.checked, bridgeToken: token.value, chineseRegion: chineseRegion.value, targetLanguage: targetLanguage.value };
   settings[english ? 'englishProvider' : 'provider'] = provider.value;
   if (guidanceReady) {
     settings.guidanceDisabled = guidanceBuiltins.filter(entry => {
@@ -120,7 +127,7 @@ form.addEventListener('submit', async event => {
   submit.disabled = true;
   try {
     guidanceStatus.textContent = ''; guidanceStatus.dataset.error = 'false';
-    if (['oxford', 'cambridge'].includes(provider.value) && token.value.trim().length < 24) {
+    if (targetLanguage.value === 'auto' && ['oxford', 'cambridge'].includes(provider.value) && token.value.trim().length < 24) {
       status.textContent = t('tokenShort'); status.dataset.error = 'true'; return;
     }
     if (guidanceReady) {
@@ -146,7 +153,7 @@ form.addEventListener('submit', async event => {
 });
 document.querySelector('#restore').addEventListener('click', () => {
   resetRequested = true;
-  enabled.checked = true; provider.value = english ? 'free' : 'smart'; token.value = ''; showProvider();
+  enabled.checked = true; targetLanguage.value = 'auto'; provider.value = english ? 'free' : 'smart'; token.value = ''; showProvider();
   chineseRegion.value = 'auto'; showRegion();
   resetGuidance();
   status.textContent = t('restored'); status.dataset.error = 'false';

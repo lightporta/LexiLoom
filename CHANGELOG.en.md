@@ -2,6 +2,13 @@
 
 [中文](CHANGELOG.md)
 
+## 0.6.0 · 2026-11-02
+
+- Added Japanese, Korean, French, German and Spanish webpage cards with Chinese Wiktionary definitions in Simplified Chinese, source-language readings and up to two examples. They share double-click, selection, append, expand and close interactions.
+- The popup and settings now select a word language. Automatic mode retains Chinese/English behavior; explicit targets distinguish Japanese Han text and preserve German capitals and Latin accents without replacing existing source preferences.
+- A lookup uses one settings snapshot. Language changes refresh open cards, remove old reading/example controls and reject stale results. These cards keep Simplified Chinese definitions in an English interface too.
+- Missing Chinese coverage, readings, confirmed absence and service failures remain distinct. Added real Chromium fixtures plus a separate optional live-service check.
+
 ## 0.5.0 · 2026-11-02
 
 - Added dictionary navigation from the popup, settings and cards, with the full matching directory. Its 23 entries include Japanese, Korean, French, German and Spanish website links; these languages do not yet supply webpage card definitions.

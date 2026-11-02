@@ -1,9 +1,9 @@
 /* This adapter is loaded only by try.html, never on user websites. */
 window.__LEXILOOM_PREVIEW__ = {
-  getSettings: async () => ({ enabled: true, provider: 'demo' }),
+  getSettings: async () => ({ enabled: true, provider: 'demo', targetLanguage: 'auto' }),
   lookup: async word => {
     if (globalThis.LexiLoomCore.wordLanguage(word) === 'zh') {
-      if (globalThis.chrome?.runtime?.id) return chrome.runtime.sendMessage({ type: 'LOOKUP', word });
+      if (globalThis.chrome?.runtime?.id) return chrome.runtime.sendMessage({ type: 'LOOKUP_PREVIEW', word });
       const { lookupChinese } = await import('../shared/chinese.js');
       const region = globalThis.LexiLoomLocale.profile(globalThis.LexiLoomI18n.languageTag()).region;
       return lookupChinese(word, { region, uiLanguage: globalThis.LexiLoomI18n.languageTag() });

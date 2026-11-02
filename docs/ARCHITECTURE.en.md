@@ -2,7 +2,7 @@
 
 [中文](ARCHITECTURE.md)
 
-UI language, headword language and dictionary region are separate inputs. An English UI can look up “學習”; a Chinese UI looking up `apple` still keeps an English headword. Shipped support covers English and Chinese for mainland China, Hong Kong and Taiwan.
+UI language, headword language and dictionary region are separate inputs. Automatic mode covers English and Chinese for mainland China, Hong Kong and Taiwan. Explicit targets add Japanese, Korean, French, German and Spanish cards with Simplified Chinese definitions, including in an English interface.
 
 ## Lookup path
 
@@ -45,9 +45,13 @@ Settings saves are serialized partial updates. Only supplied fields change, so a
 
 ## Adding a language
 
-Register a profile and adapter with a speech locale, sources and presentation policy. The card's expansion, grouping, removal and close behavior remains reusable. A hypothetical language in the contract tests verifies this extension point; it is not advertised as an additional shipped language.
+Register a profile and adapter with a speech locale, sources and presentation policy. New profiles are `explicitOnly`, selected by `targetLanguage: auto | ja | ko | fr | de | es`. Japanese/Korean use their own segmentation locale; foreign case and accents remain intact. The hypothetical contract-test language still tests the extension point only.
 
-Languages sharing Latin script cannot be reliably distinguished by character shape alone. Supporting them will also need an explicit target-language choice or a suitable detection strategy.
+`normalizeWord(value, targetLanguage)` and `parseSelection(text, uiLanguage, targetLanguage)` carry the explicit choice through the pipeline. Content scripts capture the selection before refreshing settings and parsing. Workers use one settings snapshot for validation and dispatch. Language changes clear old reading/example controls and repeat lookup; version guards reject stale results.
+
+`multilingual.js` requests `/v1/zh/word/{word}?lang={language}`. It checks the headword, edition and any explicit source-language fields; compact records without those fields rely on the documented API filter. Only Chinese glosses and Chinese example translations are converted to Simplified. Headwords and source-language examples keep their spelling. `preferredMeaningLanguage: 'zh'` keeps Chinese definitions visible in an English UI; speech uses the headword language.
+
+Confirmed missing entries and valid entries lacking Chinese glosses become `not-found` and `translation-unavailable` respectively. Generic HTTP errors do not establish absence. A coverage gap retains dictionary navigation, while missing readings/examples are identified without inventing content or interpreting a citation as an example.
 
 ## Link directory (links, not fetches)
 
@@ -85,4 +89,4 @@ Use `Name | https://…/{word}`, or `fr | Name | https://…/{word}` for a langu
 
 `guidanceDisabled` and `guidanceCustom` (`{ name, template, language? }`) live in local `settings`. Options send only changed fields. `GET_SETTINGS` and broadcasts share a public shape, including `englishProvider` and template language scope, without the bridge token.
 
-Storage is limited to trusted contexts. The worker broadcasts `SETTINGS_CHANGED` after saves; content scripts refresh links or repeat lookup when `provider`, `englishProvider` or `chineseRegion` changes. A card's `OPEN_NAVIGATION` request asks the worker to open the extension page with an encoded URL fragment. The page need not be web-accessible.
+Storage is limited to trusted contexts. The worker broadcasts `SETTINGS_CHANGED` after saves; content scripts refresh links or repeat lookup when `provider`, `englishProvider`, `chineseRegion` or `targetLanguage` changes. A card's `OPEN_NAVIGATION` request asks the worker to open the extension page with an encoded URL fragment. The page need not be web-accessible.

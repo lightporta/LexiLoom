@@ -3,6 +3,7 @@
   'use strict';
   const list = value => Array.isArray(value) ? value : [];
   const text = (value, maximum = 8000) => typeof value === 'string' ? value.slice(0, maximum) : '';
+  const wordText = value => typeof value === 'string' ? Array.from(value).slice(0, 64).join('') : '';
   const language = value => /^[a-z]{2,3}$/.test(value || '') ? value : '';
   const locale = value => /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(value || '') ? value : '';
   function safeHttps(value) {
@@ -26,16 +27,16 @@
     const registry = context.registry || globalThis.LexiLoomLanguages?.registry;
     const profile = context.profile || registry?.entryProfile(raw || {});
     const entryLanguage = language(context.language || profile?.language || raw?.language) || 'en';
-    const word = text(context.word || raw?.word, 64);
+    const word = wordText(context.word || raw?.word);
     const region = /^[A-Z]{2,3}$/.test(context.region || raw?.region || '') ? context.region || raw.region : '';
     const base = {
-      word, displayWord: text(raw?.displayWord || word, 64), lemma: text(raw?.lemma || raw?.queryWord || word, 64),
+      word, displayWord: wordText(raw?.displayWord || word), lemma: wordText(raw?.lemma || raw?.queryWord || word),
       language: entryLanguage, region, profileId: profile?.id || entryLanguage,
       status: ['ok', 'not-found', 'error'].includes(raw?.status) ? raw.status : 'error',
       phonetic: text(raw?.phonetic, 300), pronunciations: [], meanings: [], source: source(raw?.source)
     };
-    if (raw?.queryWord) base.queryWord = text(raw.queryWord, 64);
-    const queryWords = [...new Set(list(raw?.queryWords).filter(item => typeof item === 'string').map(item => text(item, 64)))].slice(0, 8);
+    if (raw?.queryWord) base.queryWord = wordText(raw.queryWord);
+    const queryWords = [...new Set(list(raw?.queryWords).filter(item => typeof item === 'string').map(wordText))].slice(0, 8);
     if (queryWords.length) base.queryWords = queryWords;
     if (text(raw?.notice, 4000)) base.notice = text(raw.notice, 4000);
     if (/^[A-Za-z0-9_]+$/.test(raw?.noticeKey || '')) base.noticeKey = raw.noticeKey;

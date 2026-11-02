@@ -68,7 +68,11 @@ Region and interface language filter the list. A Hong Kong headword prefers Word
 
 Open **Dictionary navigation** from the toolbar popup or the bottom of a card to see every matching site. Enter a headword and choose Chinese, English, Japanese, Korean, French, German or Spanish explicitly. Japanese and Korean offer their own Wiktionary; French also has Larousse, German Duden, and Spanish RAE. Case, accents and spelling stay as entered.
 
-The five new languages currently provide links to dictionary websites. Webpage definition cards still support Chinese and English. A navigation result does not confirm that a site contains the headword.
+Japanese, Korean, French, German and Spanish also have webpage word cards. Choose the word language in the toolbar popup or settings, then double-click or select a word. These cards currently show **Simplified Chinese definitions**, including in an English interface. Original headwords, case and source-language examples stay unchanged; speech uses the source language and examples are limited to two.
+
+The source is Chinese Wiktionary through WiktApi. Missing Chinese definitions, readings and examples are identified separately from an absent word or a service failure. Switching back to automatic Chinese/English mode retains your previous sources and Chinese region. Japanese/Korean words allow up to 32 characters; the other supported words allow 48. Sentence translation is not included.
+
+The navigation page has its own language selector. It remains useful when a card lacks Chinese coverage; its links do not confirm that a site contains the headword.
 
 Settings can turn each built-in site off and add up to six custom templates. `Name | https://…/{word}` applies to all languages; `fr | Name | https://…/{word}` applies only to French. Other codes are `en`, `zh`, `ja`, `ko`, `de` and `es`. Templates require HTTPS, with `{word}` in the path, query or fragment. Names are limited to 60 characters and URLs to 300. Invalid or oversized entries reject the save without truncating or dropping rows.
 
@@ -94,7 +98,10 @@ npm run test:browser
 npm run test:browser:locales
 npm run test:browser:ui
 npm run test:browser:navigation
+npm run test:browser:multilingual
 ```
+
+For optional real-service verification, run `npm run test:browser:multilingual:live`. It queries five sample words through the installed extension and is kept out of default CI because network and corpus availability can change.
 
 On Linux, install Chromium with `install --with-deps chromium`. Tests use fixed samples unless you set `LEXILOOM_LIVE_TESTS=1`.
 

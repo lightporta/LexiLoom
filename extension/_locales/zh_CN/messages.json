@@ -15,7 +15,7 @@
     "message": "让好奇，自然展开。"
   },
   "popupLead": {
-    "message": "双击英文或中文字词，就地查看释义。"
+    "message": "先选查词语言，再双击网页中的词。"
   },
   "popupEnable": {
     "message": "启用网页查词"
@@ -156,7 +156,7 @@
     "message": "从一个词开始"
   },
   "guide1": {
-    "message": "双击英文或中文字词，出现释义卡；也可以拖选后点击查词。"
+    "message": "先选查词语言，再双击网页中的单词；中文或多词也可拖选后点击查词按钮。"
   },
   "guide2": {
     "message": "点击词卡展开释义、音标、用法和例句；再次点击词头收起。"
@@ -435,7 +435,7 @@
     "message": "无法连接本地词典服务，请确认服务正在运行。"
   },
   "error_invalid_word": {
-    "message": "英文单词最多 48 个字符，中文字词最多 32 字。"
+    "message": "请选择当前查词语言支持的单词或字词（中文、日语、韩语每词最多 32 字符，其余最多 48 字符）。"
   },
   "error_unsupported_format": {
     "message": "词典返回的数据格式暂不支持，请打开原词典查看。"
@@ -609,7 +609,7 @@
     "message": "词典导航"
   },
   "navIntro": {
-    "message": "选择词头语言，在原站查看释义。日、韩、法、德、西语现提供词典入口；网页划词词卡继续支持中英文。"
+    "message": "选择词头语言，在原站查看更多释义。日、韩、法、德、西语也可在工具栏选择查词语言后，直接双击网页中的词，查看简体中文词卡。"
   },
   "navWord": {
     "message": "要查的词"
@@ -667,5 +667,29 @@
   },
   "navInvalidLanguage": {
     "message": "请选择支持的词头语言；这个语言代码暂未接入导航。"
+  },
+  "targetLanguageLabel": {
+    "message": "查词语言"
+  },
+  "targetLanguageAuto": {
+    "message": "自动 · 中文和英文"
+  },
+  "targetLanguageHelp": {
+    "message": "选择日、韩、法、德、西语后，词卡译为简体中文。"
+  },
+  "providerMultilingual": {
+    "message": "中文维基词典 · 简中"
+  },
+  "noteMultilingual": {
+    "message": "当前语言从中文维基词典读取词条，释义显示为简体中文；词头和原语例句保持原样。读音、译文或例句缺项会说明。下方来源和地区设置保留给中英文自动模式。"
+  },
+  "source_wiktionary_multilingual": {
+    "message": "中文维基词典 · WiktApi"
+  },
+  "noticeMultilingualReadingMissing": {
+    "message": "词源未提供此词的读音，可尝试系统朗读。"
+  },
+  "error_translation_unavailable": {
+    "message": "词源暂未提供此词的中文释义，可在词典导航查看原站。"
   }
 }

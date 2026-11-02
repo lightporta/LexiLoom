@@ -1,0 +1,234 @@
+{
+  "checkedAt": "2026-11-02T12:29:49.671Z",
+  "mode": "Live native fetch through lookupMultilingual; no dictionary fixtures",
+  "node": "v24.16.0",
+  "platform": "darwin",
+  "documentation": [
+    "https://wiktapi.dev/quickstart",
+    "https://wiktapi.dev/concepts/editions"
+  ],
+  "results": [
+    {
+      "language": "ja",
+      "word": "学校",
+      "status": "ok",
+      "elapsedMs": 972,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/%E5%AD%A6%E6%A0%A1?lang=ja",
+          "status": 200
+        }
+      ],
+      "definitionCount": 1,
+      "pronunciationCount": 2,
+      "audioCount": 0,
+      "exampleCount": 0,
+      "firstDefinition": "学校",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/%E5%AD%A6%E6%A0%A1",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "ja",
+      "word": "こんにちは",
+      "status": "error",
+      "errorCode": "translation-unavailable",
+      "elapsedMs": 956,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF?lang=ja",
+          "status": 200
+        }
+      ],
+      "definitionCount": 0,
+      "pronunciationCount": 0,
+      "audioCount": 0,
+      "exampleCount": 0,
+      "sourceUrl": "https://zh.wiktionary.org/wiki/%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "ko",
+      "word": "안녕",
+      "status": "ok",
+      "elapsedMs": 955,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/%EC%95%88%EB%85%95?lang=ko",
+          "status": 200
+        }
+      ],
+      "definitionCount": 3,
+      "pronunciationCount": 6,
+      "audioCount": 0,
+      "exampleCount": 2,
+      "firstDefinition": "你好",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/%EC%95%88%EB%85%95",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "ko",
+      "word": "학교",
+      "status": "ok",
+      "elapsedMs": 236,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/%ED%95%99%EA%B5%90?lang=ko",
+          "status": 200
+        }
+      ],
+      "definitionCount": 1,
+      "pronunciationCount": 7,
+      "audioCount": 1,
+      "exampleCount": 2,
+      "firstDefinition": "学校",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/%ED%95%99%EA%B5%90",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "fr",
+      "word": "bonjour",
+      "status": "ok",
+      "elapsedMs": 234,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/bonjour?lang=fr",
+          "status": 200
+        }
+      ],
+      "definitionCount": 3,
+      "pronunciationCount": 5,
+      "audioCount": 1,
+      "exampleCount": 2,
+      "firstDefinition": "早安；你好",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/bonjour",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "fr",
+      "word": "maison",
+      "status": "ok",
+      "elapsedMs": 236,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/maison?lang=fr",
+          "status": 200
+        }
+      ],
+      "definitionCount": 4,
+      "pronunciationCount": 3,
+      "audioCount": 1,
+      "exampleCount": 2,
+      "firstDefinition": "自制的",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/maison",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "de",
+      "word": "Haus",
+      "status": "ok",
+      "elapsedMs": 223,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/Haus?lang=de",
+          "status": 200
+        }
+      ],
+      "definitionCount": 1,
+      "pronunciationCount": 3,
+      "audioCount": 2,
+      "exampleCount": 0,
+      "firstDefinition": "房子、住房",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/Haus",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "de",
+      "word": "Ärger",
+      "status": "ok",
+      "noticeKey": "noticeMultilingualReadingMissing",
+      "elapsedMs": 223,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/%C3%84rger?lang=de",
+          "status": 200
+        }
+      ],
+      "definitionCount": 1,
+      "pronunciationCount": 0,
+      "audioCount": 0,
+      "exampleCount": 0,
+      "firstDefinition": "不快、恼火、生气",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/%C3%84rger",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "es",
+      "word": "hola",
+      "status": "ok",
+      "noticeKey": "noticeMultilingualReadingMissing",
+      "elapsedMs": 266,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/hola?lang=es",
+          "status": 200
+        }
+      ],
+      "definitionCount": 1,
+      "pronunciationCount": 0,
+      "audioCount": 0,
+      "exampleCount": 0,
+      "firstDefinition": "你好",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/hola",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    },
+    {
+      "language": "es",
+      "word": "niño",
+      "status": "ok",
+      "elapsedMs": 229,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/ni%C3%B1o?lang=es",
+          "status": 200
+        }
+      ],
+      "definitionCount": 1,
+      "pronunciationCount": 4,
+      "audioCount": 2,
+      "exampleCount": 0,
+      "firstDefinition": "小孩，儿童",
+      "sourceUrl": "https://zh.wiktionary.org/wiki/ni%C3%B1o",
+      "license": {
+        "name": "CC BY-SA 4.0",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+      }
+    }
+  ]
+}

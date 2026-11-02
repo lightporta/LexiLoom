@@ -15,7 +15,7 @@
     "message": "讓好奇，自然展開。"
   },
   "popupLead": {
-    "message": "雙擊英文或中文字詞，就地查看釋義。"
+    "message": "先選查詞語言，再雙擊網頁中的詞。"
   },
   "popupEnable": {
     "message": "啟用網頁查詞"
@@ -156,7 +156,7 @@
     "message": "從一個詞開始"
   },
   "guide1": {
-    "message": "雙擊英文或中文字詞，出現釋義卡；也可以拖選後點擊查詞。"
+    "message": "先選查詞語言，再雙擊網頁中的單詞；中文或多詞也可拖選後點擊查詞按鈕。"
   },
   "guide2": {
     "message": "點擊詞卡展開釋義、音標、用法和例句；再次點擊詞頭收起。"
@@ -435,7 +435,7 @@
     "message": "無法連接本地詞典服務，請確認服務正在運行。"
   },
   "error_invalid_word": {
-    "message": "英文單詞最多 48 個字符，中文字詞最多 32 字。"
+    "message": "請選擇當前查詞語言支持的單詞或字詞（中文、日語、韓語每詞最多 32 字符，其餘最多 48 字符）。"
   },
   "error_unsupported_format": {
     "message": "詞典返回的數據格式暫不支持，請打開原詞典查看。"
@@ -609,7 +609,7 @@
     "message": "詞典導航"
   },
   "navIntro": {
-    "message": "選擇詞頭語言，在原站查看釋義。日、韓、法、德、西語現提供詞典入口；網頁劃詞詞卡繼續支持中英文。"
+    "message": "選擇詞頭語言，在原站查看更多釋義。日、韓、法、德、西語也可在工具欄選擇查詞語言後，直接雙擊網頁中的詞，查看簡體中文詞卡。"
   },
   "navWord": {
     "message": "要查的詞"
@@ -667,5 +667,29 @@
   },
   "navInvalidLanguage": {
     "message": "請選擇支持的詞頭語言；這個語言代碼暫未接入導航。"
+  },
+  "targetLanguageLabel": {
+    "message": "查詞語言"
+  },
+  "targetLanguageAuto": {
+    "message": "自動 · 中文和英文"
+  },
+  "targetLanguageHelp": {
+    "message": "選擇日、韓、法、德、西語後，詞卡譯為簡體中文。"
+  },
+  "providerMultilingual": {
+    "message": "中文維基詞典 · 簡中"
+  },
+  "noteMultilingual": {
+    "message": "當前語言從中文維基詞典讀取詞條，釋義顯示為簡體中文；詞頭和原語例句保持原樣。讀音、譯文或例句缺項會說明。下方來源和地區設置保留給中英文自動模式。"
+  },
+  "source_wiktionary_multilingual": {
+    "message": "中文維基詞典 · WiktApi"
+  },
+  "noticeMultilingualReadingMissing": {
+    "message": "詞源未提供此詞的讀音，可嘗試系統朗讀。"
+  },
+  "error_translation_unavailable": {
+    "message": "詞源暫未提供此詞的中文釋義，可在詞典導航查看原站。"
   }
 }

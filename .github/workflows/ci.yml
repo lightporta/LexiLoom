@@ -37,6 +37,8 @@ jobs:
         run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-ui', { recursive:true, force:true });"
       - name: Remove previous dictionary navigation evidence
         run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-navigation', { recursive:true, force:true });"
+      - name: Remove previous multilingual card evidence
+        run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-multilingual', { recursive:true, force:true });"
       - name: Node regression tests
         run: npm test
       - name: Check extension and scripts
@@ -57,6 +59,8 @@ jobs:
         run: npm run test:browser:ui
       - name: Check dictionary navigation and multilingual link routing
         run: npm run test:browser:navigation
+      - name: Check Japanese, Korean, French, German and Spanish Chinese word cards
+        run: npm run test:browser:multilingual
       - name: Upload this platform's universal package
         uses: actions/upload-artifact@v7
         with:
@@ -82,6 +86,7 @@ jobs:
             test-results/browser-locales/**
             test-results/browser-ui/**
             test-results/browser-navigation/**
+            test-results/browser-multilingual/**
           if-no-files-found: warn
           retention-days: 14
 

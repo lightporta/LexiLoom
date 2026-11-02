@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.en.md)
 
-界面语言、所选词的语言和词典地区分别处理。例如，英文界面仍然可以查“學習”，而中文界面查 `apple` 时也不会把词头改成中文。当前正式支持英文，以及大陆、香港、台湾的中文字词。
+界面语言、所选词的语言和词典地区分别处理。例如，英文界面仍然可以查“學習”，而中文界面查 `apple` 时也不会把词头改成中文。自动模式支持英文及大陆、香港、台湾的中文字词；显式模式新增日、韩、法、德、西语到简体中文的词卡。
 
 ## 查询路径
 
@@ -45,9 +45,13 @@
 
 ## 扩展语言
 
-新增语言需要注册 profile 和 adapter，提供读音 locale、词条来源与展示策略。词卡的展开、追加、移除和退出逻辑可以复用。契约测试用一个独立的测试语言验证这条路径；它只用于验证架构，不是已经上线的额外语种。
+新增语言需要注册 profile 和 adapter，提供读音 locale、词条来源与展示策略。日、韩、法、德、西语 profile 标记为 `explicitOnly`，通过 `targetLanguage: auto | ja | ko | fr | de | es` 选择，避免自动模式把日语汉字当中文、把所有拉丁字母当英语。日、韩按各自语言分词；法、德、西语保留重音及大小写。原有契约测试中的假想语种仍只用于架构验证。
 
-同属拉丁字母的语言不能仅靠字符形状准确区分。将来增加这类语言时，还需要明确的学习语言选择或可靠的识别策略，不能把当前英文规则直接宣传成多语识别。
+`normalizeWord(value, targetLanguage)` 和 `parseSelection(text, uiLanguage, targetLanguage)` 贯穿选区与 worker。内容脚本先捕获原选区，再刷新设置并解析；worker 用同一份设置快照验证词头和选择 adapter。换语言会重查已有卡片、清掉旧朗读与例句，版本 guard 阻止旧回复覆盖新结果。
+
+`multilingual.js` 只查中文维基词典版本，使用官方 `/v1/zh/word/{word}?lang={language}`。严格核对返回词头、版本及存在的语言字段；紧凑响应缺少词种字段时，依赖官方 `lang` 过滤。中文释义与中文例句翻译经 OpenCC 转简体，原词和原语例句不转换。`preferredMeaningLanguage: 'zh'` 保证英文界面也先显示简中释义，朗读使用词头语言的 locale。
+
+确认缺词的 404 与有效结构但无中文义项分别归为 `not-found` 和 `translation-unavailable`；通用 404、格式错误和网络错误不冒充缺词。无中文义项仍可通过词典导向看原站。缺例句、缺读音如实显示，不从引用字段反推例句，不用中文句子冒充原语句子。
 
 ## 导向库（链接，不抓取）
 
@@ -85,4 +89,4 @@ globalThis.LexiLoomGuidance.resolve(entry, { uiLanguage, uiRegion, settings })
 
 `guidanceDisabled`（关闭的内置站点 id 数组）和 `guidanceCustom`（`{ name, template, language? }` 数组）存在 `chrome.storage.local` 的 `settings` 里。设置页只发送用户改过的字段。worker 的 `GET_SETTINGS` 与广播共用公开结构，包含 `englishProvider` 和导向语言范围，不含服务口令。
 
-存储限制为受信上下文，worker 保存后向内容脚本广播 `SETTINGS_CHANGED`；内容脚本据此刷新外链，或在 `provider`、`englishProvider`、`chineseRegion` 改变时重新查词。词卡上的导航按钮通过 `OPEN_NAVIGATION` 让 worker 打开扩展页，词头、语言和地区放在 URL 片段里，不需把导航页设为网页可访问资源。
+存储限制为受信上下文，worker 保存后向内容脚本广播 `SETTINGS_CHANGED`；内容脚本据此刷新外链，或在 `provider`、`englishProvider`、`chineseRegion`、`targetLanguage` 改变时重新查词。词卡上的导航按钮通过 `OPEN_NAVIGATION` 让 worker 打开扩展页，词头、语言和地区放在 URL 片段里，不需把导航页设为网页可访问资源。
