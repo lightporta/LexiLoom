@@ -70,6 +70,17 @@ try {
     for (let n = 0; n < 80; n++) { if (await panelValue(selector, 'return true')) return; await pause(50); }
     throw new Error(`Missing ${selector}`);
   }
+  // Layout can settle a few frames after the expand click (the card grows and
+  // ResizeObserver repositions the panel). Poll instead of asserting on a fixed
+  // 340ms pause: CI runners sometimes deliver the resize callback later.
+  async function waitPanelCondition(expression, timeoutMs = 3000) {
+    const deadline = Date.now() + timeoutMs;
+    do {
+      if (await panelValue('.panel', expression)) return true;
+      await pause(50);
+    } while (Date.now() < deadline);
+    return false;
+  }
   async function readLookupState() {
     return panelValue('.panel', `return (() => {
       const cards = [...this.querySelectorAll('.card')].map(card => ({
@@ -130,12 +141,12 @@ try {
   await ready(['luminous', 'serendipity', 'curiosity']);
   check('Ctrl / Command + double-click appends a word', await panelValue('.cards','return this.children.length === 3 && this.textContent.includes("curiosity")'));
   await page.mouse.click(20,20); check('outside click closes cards', !await panelValue('.panel','return true'));
-  await page.locator('#bottom').dblclick(); await ready(['luminous']); await panelValue('.summary','this.click()'); await pause(340);
-  check('expanded card stays inside viewport at bottom-right selection', await panelValue('.panel','const r=this.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight'));
+  await page.locator('#bottom').dblclick(); await ready(['luminous']); await panelValue('.summary','this.click()');
+  check('expanded card stays inside viewport at bottom-right selection', await waitPanelCondition('const r=this.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight'));
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator('#curiosity').dblclick(); await ready(['curiosity']); await panelValue('.summary','this.click()'); await pause(340);
-  check('expanded card fits a 390px viewport', await panelValue('.panel','const r=this.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth'));
+  await page.locator('#curiosity').dblclick(); await ready(['curiosity']); await panelValue('.summary','this.click()');
+  check('expanded card fits a 390px viewport', await waitPanelCondition('const r=this.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth'));
   await page.screenshot({ path: join(docs,'browser-narrow.png') });
   await page.keyboard.press('Escape');
   const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
