@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title data-i18n="navTitle">词典导航 · LexiLoom</title>
+  <link rel="stylesheet" href="ui/pages.css">
+  <link rel="stylesheet" href="ui/navigation.css">
+</head>
+<body>
+  <main class="navigation-shell">
+    <header class="navigation-header">
+      <div class="brand"><img src="icons/icon48.png" alt=""><div class="brand-name">LexiLoom <span class="brand-cn" data-i18n="brandCn">语织</span></div></div>
+      <a href="options.html" class="muted" data-i18n="navSettings">管理词典站点</a>
+    </header>
+    <section class="navigation-intro">
+      <h1 data-i18n="navTitle">词典导航</h1>
+      <p data-i18n="navIntro">选择词头语言，在原站查看释义。</p>
+    </section>
+    <section class="settings-card navigation-search">
+      <form id="navigation-form" novalidate>
+        <label class="field navigation-word"><span data-i18n="navWord">词头</span><input id="nav-word" name="word" type="text" autocomplete="off" spellcheck="false" maxlength="128" aria-describedby="nav-status" autofocus></label>
+        <label class="field"><span data-i18n="navLanguage">词头语言</span><select id="nav-language" name="language"></select></label>
+        <label class="field" id="nav-region-field"><span data-i18n="navRegion">中文地区</span><select id="nav-region" name="region"><option value="auto" data-i18n="regionAuto">跟随界面语言</option><option value="CN" data-i18n="regionCN">中国大陆</option><option value="HK" data-i18n="regionHK">香港</option><option value="TW" data-i18n="regionTW">台湾</option></select></label>
+        <button class="primary navigation-submit" type="submit" data-i18n="navSearch" disabled>查找词典站点</button>
+      </form>
+      <p id="nav-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+    <section id="nav-results" class="navigation-results" aria-labelledby="nav-results-title" hidden>
+      <h2 id="nav-results-title"></h2>
+      <ul id="nav-sites" class="navigation-sites"></ul>
+    </section>
+    <p class="navigation-note" data-i18n="navAllSites">这里列出全部已启用的匹配站点；只有点击链接后才会访问原站。</p>
+  </main>
+  <script src="shared/languages.js"></script>
+  <script src="shared/locale.js"></script>
+  <script src="shared/guidance.js"></script>
+  <script src="shared/i18n.js"></script>
+  <script src="ui/navigation.js"></script>
+</body>
+</html>

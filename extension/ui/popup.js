@@ -27,4 +27,5 @@ enabled.addEventListener('change', async () => {
 });
 document.querySelector('#options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 document.querySelector('#try').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('try.html') }));
+document.querySelector('#navigation').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('navigation.html') }));
 })();

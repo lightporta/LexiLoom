@@ -18,8 +18,10 @@ test('limits chains to 8 different words and reports truncation', () => {
   assert.equal(parsed.words.length, 8); assert.equal(parsed.truncated, true);
 });
 test('public settings never disclose the local bridge token', () => {
-  assert.deepEqual(publicSettings({ enabled: false, provider: 'oxford', bridgeToken: 'secret' }), { enabled: false, provider: 'oxford', chineseRegion: 'auto' });
+  assert.deepEqual(publicSettings({ enabled: false, provider: 'oxford', bridgeToken: 'secret' }), { enabled: false, provider: 'oxford', englishProvider: 'free', chineseRegion: 'auto' });
   assert.equal(publicSettings({ provider: 'https://evil.example' }).provider, 'smart');
+  assert.equal(publicSettings({ englishProvider: 'demo' }).englishProvider, 'demo');
+  assert.equal(publicSettings({ englishProvider: 'https://evil.example' }).englishProvider, 'free');
 });
 test('accepts only HTTPS links without credentials', () => {
   assert.equal(safeHttps('javascript:alert(1)'), '');

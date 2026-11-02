@@ -66,17 +66,18 @@ function isExtensionPage(sender) {
 let pending = 0;
 const catalogs = new Map();
 let settingsWrites = Promise.resolve();
+// Initial reads and later broadcasts must expose the same validated shape so
+// content scripts can compare source changes against the actual saved value.
+function contentSettings(settings) {
+  return { ...publicSettings(settings), guidance: globalThis.LexiLoomGuidance.publicSettings(settings) };
+}
 // Content scripts cannot read chrome.storage directly because storage access is
 // limited to trusted contexts. Push the public settings shape to open tabs after
 // every save so an already-open word card can refresh without a page reload.
 function broadcastSettings(settings) {
   const message = {
     type: 'SETTINGS_CHANGED',
-    settings: {
-      ...publicSettings(settings),
-      englishProvider: settings.englishProvider,
-      guidance: globalThis.LexiLoomGuidance.publicSettings(settings)
-    }
+    settings: contentSettings(settings)
   };
   const tabs = chrome.tabs && chrome.tabs.query ? chrome.tabs.query({}) : Promise.resolve([]);
   return tabs.then(list => Promise.all((list || [])
@@ -86,6 +87,10 @@ function broadcastSettings(settings) {
 }
 function saveSettings(incoming) {
   const operation = settingsWrites.then(async () => {
+    if (Object.hasOwn(incoming, 'guidanceCustom')) {
+      const checked = globalThis.LexiLoomGuidance.validateCustom(incoming.guidanceCustom);
+      if (!checked.ok) return { ok: false, error: 'invalid-guidance', index: checked.index, reason: checked.error };
+    }
     const next = { ...await getSettings() };
     if (typeof incoming.enabled === 'boolean') next.enabled = incoming.enabled;
     if (typeof incoming.bridgeToken === 'string') next.bridgeToken = incoming.bridgeToken.trim().slice(0, 512);
@@ -127,11 +132,21 @@ async function handle(message, sender) {
   if (message.type === 'GET_SETTINGS') {
     const settings = await getSettings();
     // The content script needs the resolved guidance state, never the bridge token.
-    return { ...publicSettings(settings), guidance: globalThis.LexiLoomGuidance.publicSettings(settings) };
+    return contentSettings(settings);
   }
   if (message.type === 'GET_CATALOG') return getCatalog(message.catalog);
   if (message.type === 'OPEN_OPTIONS') {
     await chrome.runtime.openOptionsPage();
+    return { ok: true };
+  }
+  if (message.type === 'OPEN_NAVIGATION') {
+    const rawWord = typeof message.word === 'string' ? message.word : '';
+    const word = rawWord.trim();
+    if (!word || Array.from(word).length > 64 || !rawWord.isWellFormed() || /[\u0000-\u001f\u007f]/u.test(rawWord)
+      || !globalThis.LexiLoomGuidance.supportedLanguages().includes(message.language)) return { error: 'invalid-word' };
+    const query = new URLSearchParams({ word, language: message.language });
+    if (['CN', 'HK', 'TW'].includes(message.region)) query.set('region', message.region);
+    await chrome.tabs.create({ url: chrome.runtime.getURL('navigation.html') + '#' + query });
     return { ok: true };
   }
   if (message.type === 'LOOKUP') {

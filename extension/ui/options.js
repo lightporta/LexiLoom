@@ -14,7 +14,13 @@ const guidanceCustom = document.querySelector('#guidance-custom');
 const guidanceStatus = document.querySelector('#guidance-status');
 const guidanceBuiltins = globalThis.LexiLoomGuidance ? globalThis.LexiLoomGuidance.builtins() : [];
 const guidanceTraditional = globalThis.LexiLoomLocale.profile(globalThis.LexiLoomI18n.languageTag()).traditional;
+const regionKeys = { CN: 'regionCN', HK: 'regionHK', TW: 'regionTW' };
 let guidanceReady = false;
+let loaded = false;
+let baseline = {};
+let resetRequested = false;
+const controls = [...form.elements];
+for (const control of controls) control.disabled = true;
 if (!guidanceCustom.placeholder) guidanceCustom.placeholder = t('guidanceCustomPlaceholder');
 function showRegion() {
   const profile = globalThis.LexiLoomLocale.profile(globalThis.LexiLoomI18n.languageTag(), chineseRegion.value);
@@ -43,18 +49,19 @@ function guidanceHost(template) {
 function renderGuidance(settings) {
   const disabled = Array.isArray(settings.guidanceDisabled) ? settings.guidanceDisabled : [];
   guidanceGroups.replaceChildren();
-  for (const group of [{ language: 'en', label: 'guidanceGroupEn' }, { language: 'zh', label: 'guidanceGroupZh' }]) {
+  for (const language of globalThis.LexiLoomGuidance.supportedLanguages()) {
     const wrapper = document.createElement('div');
     wrapper.className = 'guidance-group';
     const heading = document.createElement('h3');
-    heading.textContent = t(group.label);
+    heading.textContent = t('navLanguage' + language[0].toUpperCase() + language.slice(1));
     wrapper.append(heading);
-    for (const entry of guidanceBuiltins.filter(item => item.language === group.language)) {
+    for (const entry of guidanceBuiltins.filter(item => item.language === language)) {
       const row = document.createElement('label');
       row.className = 'switch-row guidance-option';
       row.title = guidanceHost(entry.urlTemplate);
       const name = document.createElement('span');
-      name.textContent = globalThis.LexiLoomGuidance.displayName(entry, guidanceTraditional);
+      const region = entry.regions?.map(value => t(regionKeys[value])).join(' / ');
+      name.textContent = [globalThis.LexiLoomGuidance.displayName(entry, guidanceTraditional), region].filter(Boolean).join(' · ');
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.className = 'switch';
@@ -66,23 +73,8 @@ function renderGuidance(settings) {
     guidanceGroups.append(wrapper);
   }
   const custom = Array.isArray(settings.guidanceCustom) ? settings.guidanceCustom : [];
-  guidanceCustom.value = custom.map(item => `${item.name} | ${item.template}`).join('\n');
+  guidanceCustom.value = custom.map(item => `${item.language ? item.language + ' | ' : ''}${item.name} | ${item.template}`).join('\n');
   guidanceReady = true;
-}
-function guidanceOverflow(text) {
-  const limit = globalThis.LexiLoomGuidance.MAX_CUSTOM;
-  const lines = typeof text === 'string' ? text.split(/\r?\n/) : [];
-  let accepted = 0;
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index].trim();
-    if (!line || line.startsWith('#')) continue;
-    const at = line.indexOf('|');
-    const checked = globalThis.LexiLoomGuidance.validateTemplate(at < 0 ? '' : line.slice(0, at), at < 0 ? '' : line.slice(at + 1));
-    if (!checked.ok) continue;
-    accepted++;
-    if (accepted > limit) return { line: index + 1, name: checked.value.name };
-  }
-  return null;
 }
 function resetGuidance() {
   for (const input of guidanceGroups.querySelectorAll('[data-guidance-id]')) input.checked = true;
@@ -102,10 +94,28 @@ async function load() {
     renderGuidance(settings);
     showRegion();
     showProvider();
+    baseline = formSettings();
+    loaded = true;
+    for (const control of controls) control.disabled = false;
+    // Keep Chinese-only providers unavailable in an English interface.
+    for (const option of provider.options) option.disabled = english && ['smart', 'wiktionary'].includes(option.value);
   } catch { status.textContent = t('readFailed'); status.dataset.error = 'true'; }
+}
+function formSettings() {
+  const settings = { enabled: enabled.checked, bridgeToken: token.value, chineseRegion: chineseRegion.value };
+  settings[english ? 'englishProvider' : 'provider'] = provider.value;
+  if (guidanceReady) {
+    settings.guidanceDisabled = guidanceBuiltins.filter(entry => {
+      const input = guidanceGroups.querySelector(`[data-guidance-id="${entry.id}"]`);
+      return Boolean(input) && !input.checked;
+    }).map(entry => entry.id);
+    settings.guidanceCustom = globalThis.LexiLoomGuidance.parseCustom(guidanceCustom.value).custom;
+  }
+  return settings;
 }
 form.addEventListener('submit', async event => {
   event.preventDefault();
+  if (!loaded) return;
   const submit = form.querySelector('[type=submit]');
   submit.disabled = true;
   try {
@@ -113,9 +123,6 @@ form.addEventListener('submit', async event => {
     if (['oxford', 'cambridge'].includes(provider.value) && token.value.trim().length < 24) {
       status.textContent = t('tokenShort'); status.dataset.error = 'true'; return;
     }
-    const settings = { enabled: enabled.checked, bridgeToken: token.value, chineseRegion: chineseRegion.value };
-    if (english) settings.englishProvider = provider.value;
-    else settings.provider = provider.value;
     if (guidanceReady) {
       const parsed = globalThis.LexiLoomGuidance.parseCustom(guidanceCustom.value);
       if (parsed.invalid.length) {
@@ -124,25 +131,21 @@ form.addEventListener('submit', async event => {
         guidanceStatus.dataset.error = 'true';
         return;
       }
-      // parseCustom silently caps at MAX_CUSTOM, so reject overflow explicitly instead of dropping lines.
-      const overflow = guidanceOverflow(guidanceCustom.value);
-      if (overflow) {
-        guidanceStatus.textContent = t('guidanceInvalid', [String(overflow.line), overflow.name]);
-        guidanceStatus.dataset.error = 'true';
-        return;
-      }
-      settings.guidanceDisabled = guidanceBuiltins.filter(entry => {
-        const input = guidanceGroups.querySelector(`[data-guidance-id="${entry.id}"]`);
-        return Boolean(input) && !input.checked;
-      }).map(entry => entry.id);
-      settings.guidanceCustom = parsed.custom;
     }
+    const current = formSettings();
+    // Save the fields the user actually changed. A stale settings window must
+    // not undo a pause or a template edited in another window.
+    const settings = Object.fromEntries(Object.entries(current).filter(([key, value]) =>
+      resetRequested || JSON.stringify(value) !== JSON.stringify(baseline[key])));
     const response = await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings });
     if (!response.ok) throw new Error('save-failed');
+    baseline = current;
+    resetRequested = false;
     status.textContent = t('saved'); status.dataset.error = 'false';
   } catch { status.textContent = t('saveFailed'); status.dataset.error = 'true'; } finally { submit.disabled = false; }
 });
 document.querySelector('#restore').addEventListener('click', () => {
+  resetRequested = true;
   enabled.checked = true; provider.value = english ? 'free' : 'smart'; token.value = ''; showProvider();
   chineseRegion.value = 'auto'; showRegion();
   resetGuidance();

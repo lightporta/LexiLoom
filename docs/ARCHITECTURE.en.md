@@ -61,6 +61,8 @@ globalThis.LexiLoomGuidance.resolve(entry, { uiLanguage, uiRegion, settings })
 
 Returns at most three frozen link objects, selected by ascending `priority` with duplicate URLs removed:
 
+`resolveAll(entry, options)` returns the full directory for `navigation.html`. That page explicitly selects `en / zh / ja / ko / fr / de / es`, rather than guessing a new language from Latin letters or Han characters. It does not change Chinese/English card detection or adapters.
+
 | Field | Meaning |
 | --- | --- |
 | `id` | Built-in site id (such as `zh-wiktionary` or `en-oxford-learner`) or `custom-<number>` |
@@ -71,14 +73,16 @@ Returns at most three frozen link objects, selected by ascending `priority` with
 | `mode` | Always `"link-only"` |
 | `license` | Site license, or an empty string when none is declared (for example `CC BY-SA 4.0` or `CC BY-ND 3.0 TW`) |
 
-Matching: `entry.language` (`zh` / `en`) selects the language; `entry.region` filters sites that declare `regions`, falling back to `options.uiRegion` when the entry has no region; `options.uiLanguage` filters sites that declare `uiLanguages` as `en` / `zh`. Custom templates are language-neutral, have `priority` 0 and come before built-in sites.
+Matching: `entry.language` selects the language; unknown languages do not fall back to English sites. `entry.region` filters sites declaring `regions`, falling back to `options.uiRegion`; `options.uiLanguage` filters sites declaring `uiLanguages`. A custom template's optional `language` scopes it to that headword language; omission or `*` is universal. Custom templates have priority 0.
 
 ### Custom templates
 
-The format is `Name | https://…/{word}`, one per line, at most six; lines starting with `#` are ignored. `sanitize` validates again before saving: the template must start with `https://`, must contain `{word}`, must not contain other braces, the name is limited to 60 characters and the template to 300 characters. Entries that fail are dropped and not stored.
+Use `Name | https://…/{word}`, or `fr | Name | https://…/{word}` for a language, up to six rows; `#` starts a comment. Names allow 60 Unicode code points and templates 300 characters. HTTPS and `{word}` are required; credentials, control characters, backslashes and extra braces are rejected. The headword cannot change the URL authority. A query allows up to 64 Unicode code points without truncation.
+
+`validateCustom` validates the entire group before writing. One invalid row rejects the save without partial writes. `sanitize` tolerates damaged older storage and creates public snapshots; it does not silently drop rows from a successful save.
 
 ### Settings and refresh
 
-`guidanceDisabled` (array of disabled built-in site ids) and `guidanceCustom` (array of `{ name, template }`) live in the `settings` key of `chrome.storage.local`. The worker writes them only after `sanitize`, and `GET_SETTINGS` sends the content script just the `publicSettings` result.
+`guidanceDisabled` and `guidanceCustom` (`{ name, template, language? }`) live in local `settings`. Options send only changed fields. `GET_SETTINGS` and broadcasts share a public shape, including `englishProvider` and template language scope, without the bridge token.
 
-The content script listens to `chrome.storage.onChanged` (the `settings` key). On a settings change it resolves and renders the links of cards that are already open; when `provider`, `englishProvider` or `chineseRegion` changes it looks the word up again. Open cards therefore do not wait for the next selection, and they do not keep showing the previous source's text after a source change.
+Storage is limited to trusted contexts. The worker broadcasts `SETTINGS_CHANGED` after saves; content scripts refresh links or repeat lookup when `provider`, `englishProvider` or `chineseRegion` changes. A card's `OPEN_NAVIGATION` request asks the worker to open the extension page with an encoded URL fragment. The page need not be web-accessible.

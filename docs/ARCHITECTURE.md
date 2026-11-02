@@ -61,6 +61,8 @@ globalThis.LexiLoomGuidance.resolve(entry, { uiLanguage, uiRegion, settings })
 
 返回最多 3 个冻结的链接对象，按 `priority` 升序挑选，重复 URL 去重：
 
+`resolveAll(entry, options)` 返回完整匹配目录，供 `navigation.html` 使用。导航页显式选择 `en / zh / ja / ko / fr / de / es`，不根据拉丁字母或纯汉字猜测新语言，也不改变中英文词卡的识别与正文 adapter。
+
 | 字段 | 含义 |
 | --- | --- |
 | `id` | 内置站点 id（如 `zh-wiktionary`、`en-oxford-learner`）或 `custom-<序号>` |
@@ -71,14 +73,16 @@ globalThis.LexiLoomGuidance.resolve(entry, { uiLanguage, uiRegion, settings })
 | `mode` | 恒为 `"link-only"` |
 | `license` | 站点许可；没有标注时为空字符串（如 `CC BY-SA 4.0`、`CC BY-ND 3.0 TW`） |
 
-匹配规则：`entry.language`（`zh` / `en`）先筛语言；`entry.region` 过滤带 `regions` 的站点，词条没有地区时用 `options.uiRegion`；`options.uiLanguage` 按 `en` / `zh` 过滤带 `uiLanguages` 的站点。自定义模板不限语言，`priority` 为 0，排在内置站点前面。
+匹配规则：`entry.language` 先筛语言；未知语言不回退英文站。`entry.region` 过滤带 `regions` 的站点，词条没有地区时用 `options.uiRegion`；`options.uiLanguage` 按 `en` / `zh` 过滤带 `uiLanguages` 的站点。自定义模板的可选 `language` 限定词头语言，省略或 `*` 为通用；`priority` 为 0，排在内置站点前面。
 
 ### 自定义模板
 
-格式为 `名称 | https://…/{word}`，一行一条，`#` 开头的行忽略，最多 6 条。`sanitize` 在保存前重新校验：必须以 `https://` 开头、必须包含 `{word}`、占位符之外不能出现其他花括号，名称最长 60 字符，模板最长 300 字符；不合格的条目直接丢弃，不写入存储。
+格式为 `名称 | https://…/{word}`，或 `fr | 名称 | https://…/{word}` 指定语言，一行一条，`#` 开头的行忽略，最多 6 条。名称最多 60 Unicode 字符，模板最多 300 字符。必须使用 HTTPS、包含 `{word}`，不能带凭据、控制字符、反斜线或额外花括号；词头不能改变 URL 的 authority。词头最多 64 Unicode 字符，不通过截断制造另一个查询词。
+
+`validateCustom` 在写入前严格校验整组模板，任一无效则整次设置保存失败，不写入部分结果。`sanitize` 仅用于容错读取旧存储与生成公开状态，不把静默丢条当作保存成功。
 
 ### 设置与刷新
 
-`guidanceDisabled`（关闭的内置站点 id 数组）和 `guidanceCustom`（`{ name, template }` 数组）存在 `chrome.storage.local` 的 `settings` 里。worker 的 `sanitize` 清理后再写，`GET_SETTINGS` 只把 `publicSettings` 的结果发给内容脚本。
+`guidanceDisabled`（关闭的内置站点 id 数组）和 `guidanceCustom`（`{ name, template, language? }` 数组）存在 `chrome.storage.local` 的 `settings` 里。设置页只发送用户改过的字段。worker 的 `GET_SETTINGS` 与广播共用公开结构，包含 `englishProvider` 和导向语言范围，不含服务口令。
 
-内容脚本监听 `chrome.storage.onChanged`（`settings` 键）：设置变化时重新解析并渲染已打开词卡的导向外链；`provider`、`englishProvider` 或 `chineseRegion` 变化时重新查词。这样已打开的卡片不用等下一次选词，换源后也不会继续显示旧词源的正文。
+存储限制为受信上下文，worker 保存后向内容脚本广播 `SETTINGS_CHANGED`；内容脚本据此刷新外链，或在 `provider`、`englishProvider`、`chineseRegion` 改变时重新查词。词卡上的导航按钮通过 `OPEN_NAVIGATION` 让 worker 打开扩展页，词头、语言和地区放在 URL 片段里，不需把导航页设为网页可访问资源。

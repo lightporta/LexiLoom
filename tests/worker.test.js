@@ -19,7 +19,7 @@ const options = { id: chrome.runtime.id, url: `chrome-extension://${chrome.runti
 function send(message, sender = site) { return new Promise(resolve => handler(message, sender, resolve)); }
 test('worker restricts storage and content-facing settings', async () => {
   assert.deepEqual(access, { accessLevel: 'TRUSTED_CONTEXTS' });
-  assert.deepEqual(await send({ type: 'GET_SETTINGS' }), { enabled: true, provider: 'demo', chineseRegion: 'auto', guidance: { disabled: [], custom: [] } });
+  assert.deepEqual(await send({ type: 'GET_SETTINGS' }), { enabled: true, provider: 'demo', englishProvider: 'free', chineseRegion: 'auto', guidance: { disabled: [], custom: [] } });
   assert.equal((await send({ type: 'GET_PRIVATE_SETTINGS' })).error, 'unauthorized');
   assert.equal((await send({ type: 'SAVE_SETTINGS', settings: { provider: 'oxford' } })).error, 'unauthorized');
 });
@@ -134,23 +134,38 @@ test('catalog requests cannot access a non-catalog extension path', async () => 
   try { assert.equal((await send({ type: 'GET_CATALOG', catalog: '../../bridge/.env' })).error, 'invalid-catalog'); }
   finally { globalThis.fetch = oldFetch; }
 });
-test('options page saves sanitized guidance preferences and content clients never see the token', async () => {
+test('options page validates custom guidance atomically and content clients never see the token', async () => {
   stored = { enabled: true, provider: 'demo', chineseRegion: 'auto', bridgeToken: 'private-bridge-token-is-long-enough' };
+  const french = { name: 'French dictionary', template: 'https://example.com/w/{word}', language: 'fr' };
   const saved = await send({ type: 'SAVE_SETTINGS', settings: {
     enabled: true, provider: 'demo',
     guidanceDisabled: ['en-wiktionary', 'bogus', 'zh-youdao'],
-    guidanceCustom: [
-      { name: '我的词典', template: 'https://example.com/w/{word}' },
-      { name: 'Bad scheme', template: 'http://example.com/{word}' },
-      { name: 'No placeholder', template: 'https://example.com/fixed' }
-    ]
+    guidanceCustom: [french]
   } }, options);
   assert.deepEqual(saved, { ok: true });
-  // Unknown ids and invalid templates are dropped before persisting.
+  // Unknown builtin ids are harmless, but custom rows must never be lost.
   assert.deepEqual(stored.guidanceDisabled, ['en-wiktionary', 'zh-youdao']);
-  assert.deepEqual(stored.guidanceCustom, [{ name: '我的词典', template: 'https://example.com/w/{word}' }]);
+  assert.deepEqual(stored.guidanceCustom, [french]);
+  assert.deepEqual((await send({ type: 'GET_SETTINGS' })).guidance.custom, [french]);
   assert.equal(stored.enabled, true);
   assert.equal(stored.provider, 'demo');
+  const beforeInvalidSave = structuredClone(stored);
+  const invalidCustomLists = [
+    [french, { name: 'Bad scheme', template: 'http://example.com/{word}' }],
+    [{ name: 'No placeholder', template: 'https://example.com/fixed' }],
+    Array.from({ length: 7 }, (_, index) => ({ ...french, name: `Site ${index}` })),
+    [{ name: 'Hostname placeholder', template: 'https://{word}.example.com/' }],
+    [{ name: 'Long template', template: 'https://example.com/' + 'x'.repeat(300) + '/{word}' }],
+    [{ ...french, name: 'x'.repeat(61) }],
+    [{ ...french, language: 'unknown' }],
+    { name: 'Not an array' }
+  ];
+  for (const guidanceCustom of invalidCustomLists) {
+    const rejected = await send({ type: 'SAVE_SETTINGS', settings: { enabled: false, chineseRegion: 'HK', guidanceCustom } }, options);
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.error, 'invalid-guidance');
+    assert.deepEqual(stored, beforeInvalidSave, 'a rejected custom list must not partially save other fields');
+  }
   // Saving only custom templates preserves the disabled ids and other fields.
   assert.deepEqual(await send({ type: 'SAVE_SETTINGS', settings: { guidanceCustom: [] } }, options), { ok: true });
   assert.deepEqual(stored.guidanceDisabled, ['en-wiktionary', 'zh-youdao']);
@@ -160,7 +175,7 @@ test('options page saves sanitized guidance preferences and content clients neve
   // The content-facing shape carries resolved guidance state but not the token.
   const settings = await send({ type: 'GET_SETTINGS' });
   assert.deepEqual(settings, {
-    enabled: true, chineseRegion: 'auto', provider: 'demo',
+    enabled: true, chineseRegion: 'auto', provider: 'demo', englishProvider: 'free',
     guidance: { disabled: ['en-wiktionary', 'zh-youdao'], custom: [] }
   });
   assert.ok(!JSON.stringify(settings).includes('private-bridge-token'));
@@ -178,14 +193,53 @@ test('a settings save broadcasts public settings to content scripts without the 
   };
   try {
     stored = { enabled: true, provider: 'demo', englishProvider: 'demo', chineseRegion: 'auto', bridgeToken: 'private-bridge-token-is-long-enough' };
-    assert.deepEqual(await send({ type: 'SAVE_SETTINGS', settings: { guidanceDisabled: ['zh-youdao'] } }, options), { ok: true });
+    const french = { name: 'French dictionary', template: 'https://example.com/w/{word}', language: 'fr' };
+    assert.deepEqual(await send({ type: 'SAVE_SETTINGS', settings: { guidanceDisabled: ['zh-youdao'], guidanceCustom: [french] } }, options), { ok: true });
     assert.deepEqual(sent.map(item => item.id), [11, 12]);
     const message = sent[0].message;
     assert.equal(message.type, 'SETTINGS_CHANGED');
     assert.deepEqual(message.settings, {
       enabled: true, chineseRegion: 'auto', provider: 'demo', englishProvider: 'demo',
-      guidance: { disabled: ['zh-youdao'], custom: [] }
+      guidance: { disabled: ['zh-youdao'], custom: [french] }
     });
+    assert.deepEqual(await send({ type: 'GET_SETTINGS' }), message.settings, 'initial reads and broadcasts must share the same public settings shape');
     assert.ok(!JSON.stringify(message).includes('private-bridge-token'));
   } finally { chrome.tabs = oldTabs; }
+});
+test('initial settings preserve the saved English dictionary and validate unsupported values', async () => {
+  const previous = stored;
+  try {
+    stored = { ...stored, englishProvider: 'cambridge' };
+    assert.equal((await send({ type: 'GET_SETTINGS' })).englishProvider, 'cambridge');
+    stored = { ...stored, englishProvider: 'https://unexpected.example' };
+    const settings = await send({ type: 'GET_SETTINGS' });
+    assert.equal(settings.englishProvider, 'free');
+    assert.ok(!('bridgeToken' in settings));
+  } finally { stored = previous; }
+});
+test('navigation opens only the extension directory with validated query data in its fragment', async () => {
+  const previousTabs = chrome.tabs, previousGetURL = chrome.runtime.getURL;
+  const opened = [];
+  chrome.tabs = { create: async details => { opened.push(details); } };
+  chrome.runtime.getURL = path => `chrome-extension://${chrome.runtime.id}/${path}`;
+  try {
+    assert.deepEqual(await send({ type: 'OPEN_NAVIGATION', word: "l'été & café", language: 'fr', region: 'TW' }), { ok: true });
+    const target = new URL(opened[0].url);
+    assert.equal(target.protocol, 'chrome-extension:');
+    assert.equal(target.hostname, chrome.runtime.id);
+    assert.equal(target.pathname, '/navigation.html');
+    assert.equal(target.search, '');
+    assert.deepEqual(Object.fromEntries(new URLSearchParams(target.hash.slice(1))), { word: "l'été & café", language: 'fr', region: 'TW' });
+    for (const message of [
+      { word: '', language: 'en' }, { word: 'a'.repeat(65), language: 'en' },
+      { word: 'bad\u0000word', language: 'en' }, { word: '\nword', language: 'en' },
+      { word: 'a\ud800b', language: 'fr' }, { word: 'word', language: 'unknown' }
+    ]) assert.deepEqual(await send({ type: 'OPEN_NAVIGATION', ...message }), { error: 'invalid-word' });
+    assert.deepEqual(await send({ type: 'OPEN_NAVIGATION', word: 'apple', language: 'en' }, { id: 'other' }), { error: 'unauthorized' });
+    assert.equal(opened.length, 1, 'invalid requests must not open any tab');
+  } finally {
+    chrome.tabs = previousTabs;
+    if (previousGetURL) chrome.runtime.getURL = previousGetURL;
+    else delete chrome.runtime.getURL;
+  }
 });

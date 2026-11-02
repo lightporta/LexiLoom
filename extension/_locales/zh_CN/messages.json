@@ -585,7 +585,7 @@
     "message": "按词条语言与地区挑选可署名的词典站外链。插件只生成链接，不抓取、不转存这些网站的正文。"
   },
   "guidanceBuiltinHelp": {
-    "message": "按当前语言与地区自动匹配；启用的站点会显示在词卡底部，每次最多 3 个。"
+    "message": "词卡按语言和地区显示前 3 个入口。词典导航页会显示全部匹配站点。"
   },
   "guidanceGroupEn": {
     "message": "英文词条"
@@ -597,12 +597,75 @@
     "message": "自定义链接模板"
   },
   "guidanceCustomHelp": {
-    "message": "每行一个：名称 | https://词典站路径/{word}。必须使用 HTTPS 并包含 {word} 占位符；最多 6 条。"
+    "message": "每行填写“名称 | https://example.com/word/{word}”，适用于所有语言。也可用“fr | 名称 | https://…/{word}”指定语言（en、zh、ja、ko、fr、de、es）。最多 6 条；名称最多 60 字符，网址最多 300 字符；{word} 只能放在路径、查询或片段中。"
   },
   "guidanceCustomPlaceholder": {
     "message": "我的词典 | https://example.com/word/{word}"
   },
   "guidanceInvalid": {
-    "message": "自定义模板无效：第 $1 行“$2”。"
+    "message": "第 $1 行模板无效：$2。请检查语言、长度、网址格式与条数。"
+  },
+  "navTitle": {
+    "message": "词典导航"
+  },
+  "navIntro": {
+    "message": "选择词头语言，在原站查看释义。日、韩、法、德、西语现提供词典入口；网页划词词卡继续支持中英文。"
+  },
+  "navWord": {
+    "message": "要查的词"
+  },
+  "navLanguage": {
+    "message": "词头语言"
+  },
+  "navRegion": {
+    "message": "中文词典地区"
+  },
+  "navSearch": {
+    "message": "寻找词典"
+  },
+  "navEmpty": {
+    "message": "先输入一个要查的词。"
+  },
+  "navInvalidWord": {
+    "message": "请输入不超过 64 个字符的词头，不能包含控制字符。"
+  },
+  "navNoSites": {
+    "message": "这个语言没有已启用的站点。可以在设置中启用词典，或添加对应语言的模板。"
+  },
+  "navResults": {
+    "message": "$1 · $2 · $3 个词典入口"
+  },
+  "navSettings": {
+    "message": "管理词典与模板"
+  },
+  "navLanguageEn": {
+    "message": "英语"
+  },
+  "navLanguageZh": {
+    "message": "中文"
+  },
+  "navLanguageJa": {
+    "message": "日语"
+  },
+  "navLanguageKo": {
+    "message": "韩语"
+  },
+  "navLanguageFr": {
+    "message": "法语"
+  },
+  "navLanguageDe": {
+    "message": "德语"
+  },
+  "navLanguageEs": {
+    "message": "西班牙语"
+  },
+  "navAllSites": {
+    "message": "完整词典目录。点击入口后才会访问原站。"
+  },
+  "navOpen": {
+    "message": "在 $1 查看 ↗"
+  },
+  "navInvalidLanguage": {
+    "message": "请选择支持的词头语言；这个语言代码暂未接入导航。"
   }
 }

@@ -24,7 +24,8 @@
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true, provider: 'smart', englishProvider: 'free', chineseRegion: 'auto', bridgeToken: '' });
   function publicSettings(settings = {}) {
     return { enabled: settings.enabled !== false, chineseRegion: ['CN', 'HK', 'TW'].includes(settings.chineseRegion) ? settings.chineseRegion : 'auto',
-      provider: languages.PROVIDERS.includes(settings.provider) ? settings.provider : 'smart' };
+      provider: languages.PROVIDERS.includes(settings.provider) ? settings.provider : 'smart',
+      englishProvider: languages.ENGLISH_PROVIDERS.includes(settings.englishProvider) ? settings.englishProvider : 'free' };
   }
   globalThis.LexiLoomCore = Object.freeze({ MAX_WORDS, normalizeWord, wordLanguage, parseSelection, safeHttps, DEFAULT_SETTINGS, publicSettings });
 })();

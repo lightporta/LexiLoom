@@ -58,19 +58,12 @@
   // shape so a settings save cannot leak private fields into the panel.
   function normalizeSettings(value) {
     const source = value && typeof value === "object" ? value : {};
-    const guidance = source.guidance && typeof source.guidance === "object" ? source.guidance : {};
-    const disabled = Array.isArray(source.guidanceDisabled) ? source.guidanceDisabled : Array.isArray(guidance.disabled) ? guidance.disabled : [];
-    const custom = Array.isArray(source.guidanceCustom) ? source.guidanceCustom : Array.isArray(guidance.custom) ? guidance.custom : [];
     return {
       enabled: source.enabled !== false,
       provider: typeof source.provider === "string" ? source.provider : "smart",
       englishProvider: typeof source.englishProvider === "string" ? source.englishProvider : "free",
       chineseRegion: typeof source.chineseRegion === "string" ? source.chineseRegion : "auto",
-      guidance: {
-        disabled: disabled.filter(id => typeof id === "string"),
-        custom: custom.filter(item => item && typeof item === "object" && typeof item.name === "string" && typeof item.template === "string")
-          .map(item => ({ name: item.name, template: item.template }))
-      }
+      guidance: globalThis.LexiLoomGuidance?.publicSettings(source) || { disabled: [], custom: [] }
     };
   }
 
@@ -380,7 +373,19 @@
     }
     if (!list.childElementCount) return;
     block.append(list);
+    if (runtime?.id) {
+      const browse = button('text-button guidance-browse', t('navTitle'), undefined, () => {
+        const entry = card.view.entry;
+        void runtime.sendMessage({ type: 'OPEN_NAVIGATION', word: entry.displayWord || entry.word,
+          language: entry.language, region: entry.region || localeRegion() }).catch(() => {});
+      });
+      block.append(browse);
+    }
     card.details.append(block);
+  }
+
+  function localeRegion() {
+    return globalThis.LexiLoomLocale.profile(i18n?.languageTag() || 'zh-CN', settings.chineseRegion).region;
   }
 
   function renderDetails(card, view) {

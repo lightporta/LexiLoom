@@ -66,7 +66,11 @@ An expanded card lists up to three dictionary links you can open. They are chose
 
 Region and interface language filter the list. A Hong Kong headword prefers Words.hk and the Traditional Han Dian entry, a Taiwan headword prefers Moedict, and a mainland headword prefers the simplified Han Dian entry. Youdao, Bing and Cambridge English–Chinese can appear when a Chinese interface looks up an English word; an English interface keeps English-only sites. At most three links are taken by priority, so disabling a site or adding a custom template changes the result.
 
-Settings can turn each built-in site off. You can also add custom templates as `Name | https://…/{word}`: HTTPS only, `{word}` required, at most six. The background worker validates and sanitizes them before they are stored.
+Open **Dictionary navigation** from the toolbar popup or the bottom of a card to see every matching site. Enter a headword and choose Chinese, English, Japanese, Korean, French, German or Spanish explicitly. Japanese and Korean offer their own Wiktionary; French also has Larousse, German Duden, and Spanish RAE. Case, accents and spelling stay as entered.
+
+The five new languages currently provide links to dictionary websites. Webpage definition cards still support Chinese and English. A navigation result does not confirm that a site contains the headword.
+
+Settings can turn each built-in site off and add up to six custom templates. `Name | https://…/{word}` applies to all languages; `fr | Name | https://…/{word}` applies only to French. Other codes are `en`, `zh`, `ja`, `ko`, `de` and `es`. Templates require HTTPS, with `{word}` in the path, query or fragment. Names are limited to 60 characters and URLs to 300. Invalid or oversized entries reject the save without truncating or dropping rows.
 
 The directory only generates links. The extension does not fetch or rehost those pages, and it adds no host permissions for them: the manifest still lists only local storage and the same four lookup hosts. Opening a link takes you to the destination site's own content and policies. Card content always comes from the sources in "Where the words come from"; these links are extra entry points.
 
@@ -89,6 +93,7 @@ npx --no-install playwright-core install chromium
 npm run test:browser
 npm run test:browser:locales
 npm run test:browser:ui
+npm run test:browser:navigation
 ```
 
 On Linux, install Chromium with `install --with-deps chromium`. Tests use fixed samples unless you set `LEXILOOM_LIVE_TESTS=1`.

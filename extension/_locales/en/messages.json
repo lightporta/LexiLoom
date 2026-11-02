@@ -585,7 +585,7 @@
     "message": "Pick credited dictionary links by headword language and region. The extension only creates links; it never fetches or rehosts those pages."
   },
   "guidanceBuiltinHelp": {
-    "message": "Matched by language and region. Enabled sites appear at the bottom of a card, at most three at a time."
+    "message": "Cards show the first three matching links by language and region. Dictionary navigation shows every match."
   },
   "guidanceGroupEn": {
     "message": "English headwords"
@@ -597,12 +597,75 @@
     "message": "Custom link templates"
   },
   "guidanceCustomHelp": {
-    "message": "One per line: name | https://example.com/word/{word}. HTTPS and the {word} placeholder are required; up to six."
+    "message": "Use name | https://example.com/word/{word} for all languages, or fr | name | https://…/{word} for a specific language (en, zh, ja, ko, fr, de, es). Up to six templates; names up to 60 characters and URLs up to 300. Put {word} in the path, query or fragment."
   },
   "guidanceCustomPlaceholder": {
     "message": "My dictionary | https://example.com/word/{word}"
   },
   "guidanceInvalid": {
-    "message": "Invalid custom template on line $1: $2."
+    "message": "Invalid template on line $1: $2. Check its language, length, URL and the six-template limit."
+  },
+  "navTitle": {
+    "message": "Dictionary navigation"
+  },
+  "navIntro": {
+    "message": "Choose the headword language and read the definition at its source. Japanese, Korean, French, German and Spanish currently offer dictionary links; webpage word cards support Chinese and English."
+  },
+  "navWord": {
+    "message": "Headword"
+  },
+  "navLanguage": {
+    "message": "Headword language"
+  },
+  "navRegion": {
+    "message": "Chinese dictionary region"
+  },
+  "navSearch": {
+    "message": "Find dictionaries"
+  },
+  "navEmpty": {
+    "message": "Enter a headword to begin."
+  },
+  "navInvalidWord": {
+    "message": "Enter a headword of up to 64 characters without control characters."
+  },
+  "navNoSites": {
+    "message": "No enabled sites match this language. Enable a dictionary or add a template for this language in settings."
+  },
+  "navResults": {
+    "message": "$1 · $2 · $3 dictionary links"
+  },
+  "navSettings": {
+    "message": "Manage dictionaries and templates"
+  },
+  "navLanguageEn": {
+    "message": "English"
+  },
+  "navLanguageZh": {
+    "message": "Chinese"
+  },
+  "navLanguageJa": {
+    "message": "Japanese"
+  },
+  "navLanguageKo": {
+    "message": "Korean"
+  },
+  "navLanguageFr": {
+    "message": "French"
+  },
+  "navLanguageDe": {
+    "message": "German"
+  },
+  "navLanguageEs": {
+    "message": "Spanish"
+  },
+  "navAllSites": {
+    "message": "The full matching directory. A site is visited only when you open its link."
+  },
+  "navOpen": {
+    "message": "Open in $1 ↗"
+  },
+  "navInvalidLanguage": {
+    "message": "Choose a supported headword language. This language code is not in the directory yet."
   }
 }

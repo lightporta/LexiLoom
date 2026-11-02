@@ -54,6 +54,85 @@ async function select(harness, word) {
   await harness.waitForPanel('.summary-text', 'return !this.classList.contains("loading")');
 }
 
+// Start from a stored non-default English source and a fresh content script.
+// Saving first would broadcast the missing field and conceal an initial-read bug.
+{
+  const harness = await openLocaleHarness(chromium, 'en-US');
+  try {
+    await fixture(harness.worker);
+    await harness.worker.evaluate(async () => {
+      const { settings } = await chrome.storage.local.get('settings');
+      await chrome.storage.local.set({ settings: { ...settings, englishProvider: 'demo' } });
+    });
+    await harness.page.reload();
+    await select(harness, 'serendipity');
+    assert.match(await harness.panel('.source-label', 'return this.textContent'), /Local demo/);
+    await harness.panel('.summary', 'this.click()');
+    await harness.panel('.panel', 'this.__qaSourceSwitchPanel = true');
+    await harness.options.evaluate(() => chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: { englishProvider: 'free' } }));
+    await harness.waitForPanel('.card', 'return this.getAttribute("aria-busy")==="false" && this.querySelector(".source-label").textContent.includes("Free Dictionary") && this.querySelector(".summary-text").textContent.includes("original English fixture")');
+    assert.equal(await harness.panel('.panel', 'return this.__qaSourceSwitchPanel'), true);
+    assert.equal(await harness.panel('.summary', 'return this.getAttribute("aria-expanded")'), 'true');
+    assert.deepEqual(harness.errors, []);
+    checks.push('An English card opened with a saved demo preference refreshes in place when switched to Free Dictionary');
+  } catch (error) {
+    await harness.page.screenshot({ path: join(directory, 'en-US-saved-source-failure.png') }).catch(() => {});
+    throw error;
+  } finally { await harness.close(); }
+}
+
+{
+  const harness = await openLocaleHarness(chromium, 'en-US');
+  try {
+    await harness.options.waitForFunction(() => !document.querySelector('[type=submit]').disabled);
+    const otherWindow = await harness.context.newPage();
+    await otherWindow.goto(`chrome-extension://${harness.extensionId}/options.html`);
+    await otherWindow.waitForFunction(() => !document.querySelector('[type=submit]').disabled);
+    const externalCustom = { name: 'Other window dictionary', template: 'https://example.org/dictionary/{word}', language: 'en' };
+    await otherWindow.evaluate(guidanceCustom => chrome.runtime.sendMessage({
+      type: 'SAVE_SETTINGS', settings: { enabled: false, guidanceCustom: [guidanceCustom] }
+    }), externalCustom);
+    // This older options form still displays enabled=true and no custom rows.
+    // Changing only the region must not submit those stale values as a reset.
+    assert.equal(await harness.options.locator('#enabled').isChecked(), true);
+    assert.equal(await harness.options.locator('#guidance-custom').inputValue(), '');
+    await harness.options.locator('#chinese-region').selectOption('HK');
+    await harness.options.locator('[type=submit]').click();
+    await harness.options.waitForFunction(() => document.querySelector('#save-status').textContent === globalThis.LexiLoomI18n.t('saved'));
+    const merged = await otherWindow.evaluate(() => chrome.runtime.sendMessage({ type: 'GET_PRIVATE_SETTINGS' }));
+    assert.equal(merged.enabled, false);
+    assert.equal(merged.chineseRegion, 'HK');
+    assert.deepEqual(merged.guidanceCustom, [externalCustom]);
+    checks.push('A stale options window saves its changed region without overwriting a pause or custom dictionary from another window');
+
+    const failedWindow = await harness.context.newPage();
+    await failedWindow.addInitScript(() => {
+      if (location.pathname !== '/options.html') return;
+      const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+      globalThis.__qaSaveAttempts = 0;
+      chrome.runtime.sendMessage = (message, ...args) => {
+        if (message.type === 'GET_PRIVATE_SETTINGS') return Promise.reject(new Error('QA-only settings read failure'));
+        if (message.type === 'SAVE_SETTINGS') globalThis.__qaSaveAttempts += 1;
+        return send(message, ...args);
+      };
+    });
+    await failedWindow.goto(`chrome-extension://${harness.extensionId}/options.html`);
+    await failedWindow.waitForFunction(() => document.querySelector('#save-status').dataset.error === 'true'
+      && document.querySelector('#save-status').textContent === globalThis.LexiLoomI18n.t('readFailed'));
+    assert.equal(await failedWindow.evaluate(() => [...document.querySelector('#settings-form').elements].every(control => control.disabled)), true);
+    const beforeFailedSubmit = await harness.worker.evaluate(async () => (await chrome.storage.local.get('settings')).settings);
+    await failedWindow.evaluate(() => document.querySelector('#settings-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    assert.equal(await failedWindow.evaluate(() => globalThis.__qaSaveAttempts), 0);
+    assert.deepEqual(await harness.worker.evaluate(async () => (await chrome.storage.local.get('settings')).settings), beforeFailedSubmit);
+    assert.deepEqual(harness.errors, []);
+    await failedWindow.screenshot({ path: join(directory, 'en-US-options-read-failure.png') });
+    checks.push('A failed options settings read disables the form and programmatic submit cannot overwrite storage');
+  } catch (error) {
+    await harness.options.screenshot({ path: join(directory, 'en-US-options-concurrency-failure.png') }).catch(() => {});
+    throw error;
+  } finally { await harness.close(); }
+}
+
 for (const tag of ['en-US', 'zh-TW']) {
   const harness = await openLocaleHarness(chromium, tag);
   try {

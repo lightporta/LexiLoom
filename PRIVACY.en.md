@@ -1,4 +1,4 @@
-# LexiLoom 0.4.0 privacy notice
+# LexiLoom 0.5.0 privacy notice
 
 [中文](PRIVACY.md)
 
@@ -12,6 +12,7 @@ The extension reads the text you select so it can tell an English word from a Ch
 - **Oxford / Cambridge:** The selected word is sent to the fixed local address `http://127.0.0.1:47821`. The local service then queries the official API you chose. Official keys live in your own `bridge/.env` and are not inside the extension package. The local service does not log query words or API keys and does not persistently cache official entries.
 - **Local storage:** The extension stores whether it is enabled, the English-word source for the Chinese interface, the English-word source for the English interface, the Chinese region (automatic, mainland, Hong Kong or Taiwan), the built-in guidance sites you disabled, your custom link templates, and the local service token. It does not use Chrome sync. Only the background and trusted extension pages can read that storage. Extension storage is not disk encryption. Uninstalling the extension removes these settings. `bridge/.env` is a separate file you keep or delete yourself.
 - **Source links and the guidance directory:** A dictionary site opens only when you click, with `noopener noreferrer`. The link directory only builds external links to dictionary sites; the extension does not fetch or rehost the body of those pages, and once you open a link the destination site's own privacy policy applies.
+- **Dictionary navigation:** The headword and selected language generate links locally. No request goes to those sites before you open a link. The current query is placed in the extension tab's URL fragment for card navigation and refresh; the extension stores no separate query history. The browser may retain that tab address.
 
 Content-script access to ordinary HTTP and HTTPS pages is required so a double-click or a selection can be answered. Lookups need host permission for `api.wiktapi.dev`, `api.dictionaryapi.dev`, `www.moedict.tw`, and the local address. The guidance directory adds no host permission for the sites it links to. At most four network lookups run at once. Entries are not cached persistently. Chrome host patterns cannot be limited by port, so the manifest permission covers `127.0.0.1` while the code pins the service to port 47821. The extension does not request clipboard, history, cookie, microphone, or camera permissions. Inputs, password fields, and editable regions do not trigger lookup.
 
