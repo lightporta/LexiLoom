@@ -6,6 +6,7 @@ import '../shared/present.js';
 import '../shared/demo-data.js';
 import { lookupFree, lookupWiktionary, lookupSmart, readJsonLimited } from '../shared/providers.js';
 import { lookupChinese, localizeChineseEntry } from '../shared/chinese.js';
+import { lookupMultilingual } from '../shared/multilingual.js';
 import { createDictionaryEngine } from '../shared/dictionary.js';
 
 const { DEFAULT_SETTINGS, normalizeWord, publicSettings } = globalThis.LexiLoomCore;
@@ -13,10 +14,15 @@ const BRIDGE = 'http://127.0.0.1:47821';
 const settingsReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 async function getSettings() {
   await settingsReady;
-  return { ...DEFAULT_SETTINGS, ...(await chrome.storage.local.get('settings')).settings };
+  const settings = { ...DEFAULT_SETTINGS, ...(await chrome.storage.local.get('settings')).settings };
+  if (!globalThis.LexiLoomLanguages.TARGET_LANGUAGES.includes(settings.targetLanguage)) settings.targetLanguage = 'auto';
+  return settings;
 }
-function errorResult(word, code, message, provider = '') {
-  const context = globalThis.LexiLoomLanguages.registry.lookupContext(word, { uiLanguage: interfaceLanguage() }) || { word: '' };
+function errorResult(word, code, message, provider = '', settings = {}) {
+  const registry = globalThis.LexiLoomLanguages.registry;
+  const profile = registry.get(settings.targetLanguage);
+  const context = registry.lookupContext(word, { settings, uiLanguage: interfaceLanguage() })
+    || { word: '', ...(profile ? { profile, language: profile.language } : {}) };
   return globalThis.LexiLoomEntry.normalizeDictionaryEntry({ word, status: 'error', error: { code, message }, source: { id: provider, name: provider, url: '' } }, context);
 }
 function interfaceLanguage() {
@@ -48,14 +54,12 @@ const dictionaries = createDictionaryEngine({
     wiktionary: (word, { fetchImpl }) => lookupWiktionary(word, { fetchImpl }),
     free: (word, { fetchImpl }) => lookupFree(word, { fetchImpl }),
     chinese: (word, { region, uiLanguage, fetchImpl }) => lookupChinese(word, { region, uiLanguage, fetchImpl }),
+    multilingual: (word, { language, uiLanguage, fetchImpl }) => lookupMultilingual(word, { language, uiLanguage, fetchImpl }),
     oxford: lookupOfficial, cambridge: lookupOfficial
   },
   localize: (entry, context) => context.profile.localizeForUi?.(context.ui)
     ? localizeChineseEntry(entry, context.ui.region) : entry
 });
-async function lookup(word) {
-  return dictionaries.lookup(word, { settings: await getSettings(), uiLanguage: interfaceLanguage() });
-}
 const pageNames = new Set(['popup.html', 'options.html', 'try.html']);
 function isExtensionPage(sender) {
   try {
@@ -66,17 +70,18 @@ function isExtensionPage(sender) {
 let pending = 0;
 const catalogs = new Map();
 let settingsWrites = Promise.resolve();
+// Initial reads and later broadcasts must expose the same validated shape so
+// content scripts can compare source changes against the actual saved value.
+function contentSettings(settings) {
+  return { ...publicSettings(settings), guidance: globalThis.LexiLoomGuidance.publicSettings(settings) };
+}
 // Content scripts cannot read chrome.storage directly because storage access is
 // limited to trusted contexts. Push the public settings shape to open tabs after
 // every save so an already-open word card can refresh without a page reload.
 function broadcastSettings(settings) {
   const message = {
     type: 'SETTINGS_CHANGED',
-    settings: {
-      ...publicSettings(settings),
-      englishProvider: settings.englishProvider,
-      guidance: globalThis.LexiLoomGuidance.publicSettings(settings)
-    }
+    settings: contentSettings(settings)
   };
   const tabs = chrome.tabs && chrome.tabs.query ? chrome.tabs.query({}) : Promise.resolve([]);
   return tabs.then(list => Promise.all((list || [])
@@ -86,12 +91,17 @@ function broadcastSettings(settings) {
 }
 function saveSettings(incoming) {
   const operation = settingsWrites.then(async () => {
+    if (Object.hasOwn(incoming, 'guidanceCustom')) {
+      const checked = globalThis.LexiLoomGuidance.validateCustom(incoming.guidanceCustom);
+      if (!checked.ok) return { ok: false, error: 'invalid-guidance', index: checked.index, reason: checked.error };
+    }
     const next = { ...await getSettings() };
     if (typeof incoming.enabled === 'boolean') next.enabled = incoming.enabled;
     if (typeof incoming.bridgeToken === 'string') next.bridgeToken = incoming.bridgeToken.trim().slice(0, 512);
     if (globalThis.LexiLoomLanguages.PROVIDERS.includes(incoming.provider)) next.provider = incoming.provider;
     if (globalThis.LexiLoomLanguages.ENGLISH_PROVIDERS.includes(incoming.englishProvider)) next.englishProvider = incoming.englishProvider;
     if (['auto', 'CN', 'HK', 'TW'].includes(incoming.chineseRegion)) next.chineseRegion = incoming.chineseRegion;
+    if (globalThis.LexiLoomLanguages.TARGET_LANGUAGES.includes(incoming.targetLanguage)) next.targetLanguage = incoming.targetLanguage;
     if (Array.isArray(incoming.guidanceDisabled) || Array.isArray(incoming.guidanceCustom)) {
       const guidance = globalThis.LexiLoomGuidance.sanitize({
         guidanceDisabled: Array.isArray(incoming.guidanceDisabled) ? incoming.guidanceDisabled : next.guidanceDisabled,
@@ -127,19 +137,37 @@ async function handle(message, sender) {
   if (message.type === 'GET_SETTINGS') {
     const settings = await getSettings();
     // The content script needs the resolved guidance state, never the bridge token.
-    return { ...publicSettings(settings), guidance: globalThis.LexiLoomGuidance.publicSettings(settings) };
+    return contentSettings(settings);
   }
   if (message.type === 'GET_CATALOG') return getCatalog(message.catalog);
   if (message.type === 'OPEN_OPTIONS') {
     await chrome.runtime.openOptionsPage();
     return { ok: true };
   }
-  if (message.type === 'LOOKUP') {
-    const word = normalizeWord(message.word);
-    if (!word) return errorResult('', 'invalid-word', '请选择 48 个字符以内的英文单词或中文字词。');
-    if (pending >= 16) return errorResult(word, 'busy', '正在查询其他单词，请稍后重试。');
+  if (message.type === 'OPEN_NAVIGATION') {
+    const rawWord = typeof message.word === 'string' ? message.word : '';
+    const word = rawWord.trim();
+    if (!word || Array.from(word).length > 64 || !rawWord.isWellFormed() || /[\u0000-\u001f\u007f]/u.test(rawWord)
+      || !globalThis.LexiLoomGuidance.supportedLanguages().includes(message.language)) return { error: 'invalid-word' };
+    const query = new URLSearchParams({ word, language: message.language });
+    if (['CN', 'HK', 'TW'].includes(message.region)) query.set('region', message.region);
+    await chrome.tabs.create({ url: chrome.runtime.getURL('navigation.html') + '#' + query });
+    return { ok: true };
+  }
+  if (message.type === 'LOOKUP' || message.type === 'LOOKUP_PREVIEW') {
+    const previewLookup = message.type === 'LOOKUP_PREVIEW';
+    if (previewLookup && (!isExtensionPage(sender) || new URL(sender.url).pathname !== '/try.html')) return { error: 'unauthorized' };
+    if (pending >= 16) return errorResult('', 'busy', '正在查询其他单词，请稍后重试。');
     pending++;
-    try { return await lookup(word); } finally { pending--; }
+    try {
+      const saved = await getSettings();
+      // The packaged reading room is an isolated Chinese/English demo. It must
+      // not reinterpret its Chinese sample using the user's foreign-word mode.
+      const settings = previewLookup ? { ...saved, targetLanguage: 'auto' } : saved;
+      const word = normalizeWord(message.word, settings.targetLanguage);
+      if (!word) return errorResult('', 'invalid-word', '请选择当前查词语言支持的词头。', '', settings);
+      return await dictionaries.lookup(word, { settings, uiLanguage: interfaceLanguage() });
+    } finally { pending--; }
   }
   if (!isExtensionPage(sender)) return { error: 'unauthorized' };
   if (message.type === 'GET_PRIVATE_SETTINGS') return getSettings();

@@ -32,6 +32,7 @@ export async function openLocaleHarness(chromium, tag, { blockNetwork = true } =
     await writeFile(path, html.replace(/<head(?:\s[^>]*)?>/i, '$&<script src="qa-locale.js"></script>'));
   }
   let context;
+  let closing = false;
   try {
     context = await chromium.launchPersistentContext(join(temporary, 'profile'), {
       channel: 'chromium', headless: true, viewport: { width: 1280, height: 960 },
@@ -64,7 +65,12 @@ export async function openLocaleHarness(chromium, tag, { blockNetwork = true } =
     const errors = [];
     context.on('page', candidate => {
       candidate.on('pageerror', error => errors.push(error.message));
-      candidate.on('load', () => { void candidate.emulateMedia({ reducedMotion: 'no-preference' }); });
+      candidate.on('load', () => {
+        if (closing || candidate.isClosed()) return;
+        void candidate.emulateMedia({ reducedMotion: 'no-preference' }).catch(error => {
+          if (!closing && !candidate.isClosed()) errors.push(`Media emulation: ${error.message}`);
+        });
+      });
     });
     page.on('pageerror', error => errors.push(error.message));
     const html = await readFile(join(root, 'tests/fixtures/reading.html'), 'utf8');
@@ -105,9 +111,10 @@ export async function openLocaleHarness(chromium, tag, { blockNetwork = true } =
     }
     return {
       context, worker, options, page, panel, waitForPanel, extensionId, errors,
-      async close() { await context.close(); await rm(temporary, { recursive: true, force: true }); }
+      async close() { closing = true; await context.close(); await rm(temporary, { recursive: true, force: true }); }
     };
   } catch (error) {
+    closing = true;
     await context?.close();
     await rm(temporary, { recursive: true, force: true });
     throw error;

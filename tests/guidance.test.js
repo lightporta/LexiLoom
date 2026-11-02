@@ -116,7 +116,7 @@ test('templates with credentials or a non-https scheme are rejected', () => {
   assert.equal(g.validateTemplate('', 'https://example.com/{word}').error, 'name');
 });
 
-test('fill encodes headwords, rejects empty/insecure templates and strips control chars', () => {
+test('fill encodes headwords and rejects empty, oversized or control-bearing queries', () => {
   assert.equal(g.fill('https://e.example/{word}', '学習'), 'https://e.example/%E5%AD%A6%E7%BF%92');
   assert.equal(g.fill('https://e.example/{word}', ''), '');
   assert.equal(g.fill('https://e.example/{word}', '   '), '');
@@ -124,12 +124,15 @@ test('fill encodes headwords, rejects empty/insecure templates and strips contro
   assert.equal(g.fill('https://e.example/{word}', '  学習  '), 'https://e.example/%E5%AD%A6%E7%BF%92');
   assert.equal(g.fill('http://e.example/{word}', 'word'), '');
   assert.equal(g.fill('https://e.example/fixed', 'word'), '');
-  assert.equal(g.fill('https://e.example/{word}', 'a\u0000b'), 'https://e.example/ab');
-  // Headwords are cleaned then truncated to 64 characters (MAX_WORD in guidance.js),
-  // so a longer word still produces a link, for its first 64 characters.
-  assert.equal(g.fill('https://e.example/{word}', 'a'.repeat(70)), 'https://e.example/' + 'a'.repeat(64));
-  assert.equal(g.resolve({ displayWord: 'a'.repeat(70), language: 'en' }, { uiLanguage: 'en-US' })[0].url,
-    'https://en.wiktionary.org/wiki/' + 'a'.repeat(64));
+  assert.equal(g.fill('https://e.example/{word}', 'a\u0000b'), '');
+  assert.equal(g.fill('https://e.example/{word}', '\ta'), '');
+  assert.equal(g.fill('https://e.example/{word}', 'a'.repeat(64)), 'https://e.example/' + 'a'.repeat(64));
+  assert.equal(g.fill('https://e.example/{word}', 'a'.repeat(65)), '');
+  assert.deepEqual(g.resolve({ displayWord: 'a'.repeat(70), language: 'en' }, { uiLanguage: 'en-US' }), []);
+  const astral = '𠮷'.repeat(64);
+  assert.equal(g.fill('https://e.example/{word}', astral), 'https://e.example/' + encodeURIComponent(astral));
+  assert.equal(g.fill('https://e.example/{word}', astral + '𠮷'), '');
+  assert.ok(g.resolve({ word: astral, language: 'ja' })[0].url.endsWith(encodeURIComponent(astral)));
 });
 
 test('publicSettings exposes sanitized guidance but never the bridge token', () => {
@@ -157,4 +160,156 @@ test('sanitize accepts flat and nested guidance shapes and tolerates malformed i
   for (const malformed of [null, undefined, {}, [], { guidanceDisabled: 'nope', guidance: { disabled: 'nope', custom: {} } }]) {
     assert.deepEqual(g.sanitize(malformed), { disabled: [], custom: [] });
   }
+});
+
+test('word placeholders cannot alter a site authority, including direct fill calls', () => {
+  for (const template of [
+    'https://{word}/search',
+    'https://{word}.example/search',
+    'https://example.com:{word}/search',
+    'https://{word}@example.com/search'
+  ]) {
+    assert.deepEqual(g.validateTemplate('Unsafe', template), { ok: false, error: 'authority' });
+    assert.equal(g.fill(template, 'other.example'), '');
+    assert.deepEqual(g.sanitize({ guidanceCustom: [{ name: 'Unsafe', template }] }).custom, []);
+  }
+  for (const template of [
+    'https://example.com/w/{word}',
+    'https://example.com/?q={word}',
+    'https://example.com/#search={word}'
+  ]) {
+    assert.equal(g.validateTemplate('Stable', template).ok, true);
+    const url = new URL(g.fill(template, 'other.example/a?b=#c'));
+    assert.equal(url.origin, 'https://example.com');
+    assert.ok(url.href.includes(encodeURIComponent('other.example/a?b=#c')));
+  }
+  assert.equal(g.validateTemplate('Backslash', 'https://example.com\\{word}').ok, false);
+});
+
+test('length limits reject custom templates instead of saving a truncated name or URL', () => {
+  const prefix = 'https://example.com/?q={word}&padding=';
+  const boundary = prefix + 'x'.repeat(g.MAX_TEMPLATE - prefix.length);
+  const name = 'n'.repeat(g.MAX_NAME);
+  assert.equal(g.validateTemplate(name, boundary).ok, true);
+  assert.deepEqual(g.validateTemplate(name + 'n', boundary), { ok: false, error: 'name_length' });
+  assert.deepEqual(g.validateTemplate(name, boundary + 'x'), { ok: false, error: 'template_length' });
+  assert.equal(g.fill(boundary + 'x', 'word'), '');
+  const parsed = g.parseCustom(`${name}n | ${boundary}\nGood | ${boundary}x`);
+  assert.deepEqual(parsed.custom, []);
+  assert.deepEqual(parsed.invalid.map(({ line, error }) => ({ line, error })), [
+    { line: 1, error: 'name_length' }, { line: 2, error: 'template_length' }
+  ]);
+  assert.deepEqual(g.sanitize({ guidanceCustom: [{ name, template: boundary + 'x' }] }).custom, []);
+  const unicodeName = '𠮷'.repeat(g.MAX_NAME);
+  assert.equal(g.validateTemplate(unicodeName, boundary).value.name, unicodeName);
+  assert.equal(g.validateTemplate(unicodeName + '𠮷', boundary).error, 'name_length');
+  assert.equal(g.validateTemplate('Name\u0000', boundary).ok, false);
+  assert.equal(g.validateTemplate('Name | Other', boundary).ok, false);
+  assert.equal(g.validateTemplate('Name', boundary + '\t').ok, false);
+});
+
+test('custom overflow reports its original line and never silently drops an accepted row', () => {
+  const lines = ['# Heading', '', ...Array.from({ length: 8 }, (_, index) =>
+    `Site ${index + 1} | https://s${index + 1}.example/{word}`)];
+  const parsed = g.parseCustom(lines.join('\n'));
+  assert.equal(parsed.custom.length, g.MAX_CUSTOM);
+  assert.deepEqual(parsed.invalid, [
+    { line: 9, name: 'Site 7', error: 'limit' },
+    { line: 10, name: 'Site 8', error: 'limit' }
+  ]);
+});
+
+test('language-scoped custom templates round-trip without changing legacy two-field entries', () => {
+  const parsed = g.parseCustom([
+    'Legacy | https://legacy.example/{word}',
+    'fr | Français | https://fr.example/{word}',
+    '* | Any language | https://any.example/{word}',
+    'EN | English | https://en.example/{word}'
+  ].join('\n'));
+  assert.deepEqual(parsed.invalid, []);
+  assert.deepEqual(parsed.custom[0], { name: 'Legacy', template: 'https://legacy.example/{word}' });
+  assert.deepEqual(parsed.custom.slice(1).map(item => item.language), ['fr', '*', 'en']);
+  assert.ok(!Object.hasOwn(parsed.custom[0], 'language'));
+  const flat = g.publicSettings({ guidanceCustom: parsed.custom });
+  const nested = g.publicSettings({ guidance: { custom: parsed.custom } });
+  assert.deepEqual(flat.custom, parsed.custom);
+  assert.deepEqual(nested, flat);
+  const withPipe = 'https://legacy.example/?q={word}&filter=one|two';
+  assert.deepEqual(g.parseCustom(`Legacy | ${withPipe}`).custom, [{ name: 'Legacy', template: withPipe }]);
+  assert.deepEqual(g.parseCustom(`fr | French | ${withPipe}`).custom,
+    [{ name: 'French', template: withPipe, language: 'fr' }]);
+  assert.deepEqual(g.parseCustom('pt | Unsupported | https://pt.example/{word}').invalid,
+    [{ line: 1, name: ' Unsupported ', error: 'language' }]);
+  assert.deepEqual(g.sanitize({ guidanceCustom: [{ name: 'Bad', template: 'https://bad.example/{word}', language: 'pt' }] }).custom, []);
+});
+
+test('language-scoped custom links match the headword language and universal links remain universal', () => {
+  const settings = { guidanceCustom: [
+    { name: 'French', template: 'https://fr.example/{word}', language: 'fr' },
+    { name: 'German', template: 'https://de.example/{word}', language: 'de' },
+    { name: 'Legacy', template: 'https://legacy.example/{word}' },
+    { name: 'All', template: 'https://all.example/{word}', language: '*' }
+  ] };
+  for (const [language, included, excluded] of [['fr', 'French', 'German'], ['de', 'German', 'French']]) {
+    const links = g.resolveAll({ word: 'test', language }, { uiLanguage: 'en-US', settings });
+    assert.ok(links.some(link => link.name === included));
+    assert.ok(!links.some(link => link.name === excluded));
+    assert.ok(links.some(link => link.name === 'Legacy'));
+    assert.ok(links.some(link => link.name === 'All'));
+  }
+  const unknown = g.resolveAll({ word: 'test', language: 'zz' }, { settings });
+  assert.deepEqual(unknown.map(link => link.name), ['Legacy', 'All']);
+  assert.deepEqual(g.resolveAll({ word: 'test', language: 'zz' }), []);
+  assert.deepEqual(g.resolveAll({ word: 'test' }), []);
+});
+
+test('the complete directory exposes entries after the card limit while preserving order and deduplication', () => {
+  const custom = Array.from({ length: 6 }, (_, index) => ({ name: `Site ${index}`, template: `https://s${index}.example/{word}` }));
+  const options = { uiLanguage: 'en-US', settings: { guidanceCustom: custom } };
+  const card = g.resolve(englishEntry, options);
+  const all = g.resolveAll(englishEntry, options);
+  assert.equal(card.length, g.MAX_LINKS);
+  assert.deepEqual(all.slice(0, g.MAX_LINKS), card);
+  assert.equal(all.filter(link => link.custom).length, 6);
+  assert.ok(all.some(link => !link.custom));
+  assert.deepEqual(g.resolve(englishEntry, { ...options, limit: 1 }), [all[0]]);
+  assert.deepEqual(g.resolve(englishEntry, { ...options, limit: 0 }), []);
+  assert.deepEqual(g.resolve(englishEntry, { ...options, limit: Infinity }), all);
+  const duplicate = { name: 'Duplicate', template: custom[0].template };
+  const deduped = g.resolveAll(englishEntry, { ...options, settings: { guidanceCustom: [custom[0], duplicate] } });
+  assert.equal(deduped.filter(link => link.url === card[0].url).length, 1);
+});
+
+test('Japanese, Korean, French, German and Spanish get their own credited directory sites', () => {
+  assert.deepEqual(g.supportedLanguages(), ['en', 'zh', 'ja', 'ko', 'fr', 'de', 'es']);
+  const examples = [
+    ['ja', '日本語', ['ja.wiktionary.org']],
+    ['ko', '사랑', ['ko.wiktionary.org']],
+    ['fr', 'bonjour', ['fr.wiktionary.org', 'www.larousse.fr']],
+    ['de', 'Straße', ['de.wiktionary.org', 'www.duden.de']],
+    ['es', 'corazón', ['es.wiktionary.org', 'dle.rae.es']]
+  ];
+  for (const [language, word, hosts] of examples) {
+    const links = g.resolveAll({ word, language }, { uiLanguage: 'en-US' });
+    assert.deepEqual(links.map(link => link.host), hosts);
+    assert.ok(links.every(link => link.url.includes(encodeURIComponent(word))));
+    assert.ok(links.every(link => link.mode === 'link-only'));
+    assert.ok(links.every(link => link.host !== 'en.wiktionary.org'));
+  }
+});
+
+test('strict custom validation rejects an entire invalid save rather than dropping individual rows', () => {
+  const valid = { name: 'French', template: 'https://fr.example/{word}', language: 'fr' };
+  const invalid = { name: 'Wrong host', template: 'https://{word}/' };
+  assert.deepEqual(g.validateCustom([valid]), { ok: true, custom: [valid] });
+  assert.deepEqual(g.validateCustom([]), { ok: true, custom: [] });
+  assert.deepEqual(g.validateCustom([valid, invalid]), { ok: false, error: 'authority', index: 1 });
+  assert.deepEqual(g.validateCustom([valid, null]), { ok: false, error: 'item', index: 1 });
+  assert.deepEqual(g.validateCustom(null), { ok: false, error: 'custom', index: -1 });
+  assert.deepEqual(g.validateCustom(Array.from({ length: 7 }, () => valid)), { ok: false, error: 'limit', index: 6 });
+  assert.deepEqual(g.validateCustom([{ ...valid, language: 'bad-language' }]), { ok: false, error: 'language', index: 0 });
+  assert.deepEqual(g.validateCustom([{ ...valid, template: valid.template + 'x'.repeat(g.MAX_TEMPLATE) }]),
+    { ok: false, error: 'template_length', index: 0 });
+  // Legacy storage remains readable even when one corrupt row is present.
+  assert.deepEqual(g.sanitize({ guidanceCustom: [valid, invalid] }).custom, [valid]);
 });

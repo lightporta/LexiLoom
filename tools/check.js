@@ -49,11 +49,11 @@ for (const file of all.filter(item => item.endsWith('.js') || item.endsWith('.ht
   // They are syntax-checked above, but do not reference our UI message keys.
   if (relative(extension, file).split(sep).join('/').startsWith('shared/chinese-data/')) continue;
   const source = await readFile(file, 'utf8');
-  for (const match of source.matchAll(/data-i18n(?:-aria|-title)?="([A-Za-z0-9_]+)"/g)) used.add(match[1]);
+  for (const match of source.matchAll(/data-i18n(?:-aria|-title|-placeholder)?="([A-Za-z0-9_]+)"/g)) used.add(match[1]);
   for (const match of source.matchAll(/\bt\(\s*["']([A-Za-z0-9_]+)["']/g)) used.add(match[1]);
 }
-for (const key of ['providerSmart', 'providerWiktionary', 'providerFree', 'providerDemo', 'providerOxford', 'providerCambridge', 'noteSmart', 'noteWiktionary', 'noteFree', 'noteDemo', 'noteOxford', 'noteCambridge', 'source_wiktionary', 'source_free', 'source_demo', 'source_oxford', 'source_cambridge', 'source_smart', 'noticeWiktMissing', 'noticeWiktDown', 'noticeUnconfirmed', 'noticeBothDown', 'noticeFreeDown', 'noticeNoEnglish']) used.add(key);
-for (const code of ['disabled', 'not_configured', 'bridge_auth', 'busy', 'bridge_busy', 'bridge_unavailable', 'invalid_word', 'unsupported_format', 'authentication', 'rate_limit', 'upstream', 'invalid_dictionary', 'integration', 'timeout', 'network', 'demo_miss', 'connection_failed', 'generic', 'missing_token', 'http_status', 'bridge_down']) used.add(`error_${code}`);
+for (const key of ['providerSmart', 'providerWiktionary', 'providerFree', 'providerDemo', 'providerOxford', 'providerCambridge', 'providerMultilingual', 'noteSmart', 'noteWiktionary', 'noteFree', 'noteDemo', 'noteOxford', 'noteCambridge', 'source_wiktionary', 'source_free', 'source_demo', 'source_oxford', 'source_cambridge', 'source_smart', 'source_wiktionary_multilingual', 'noticeWiktMissing', 'noticeWiktDown', 'noticeUnconfirmed', 'noticeBothDown', 'noticeFreeDown', 'noticeNoEnglish', 'noticeMultilingualReadingMissing']) used.add(key);
+for (const code of ['disabled', 'not_configured', 'bridge_auth', 'busy', 'bridge_busy', 'bridge_unavailable', 'invalid_word', 'unsupported_format', 'translation_unavailable', 'authentication', 'rate_limit', 'upstream', 'invalid_dictionary', 'integration', 'timeout', 'network', 'demo_miss', 'connection_failed', 'generic', 'missing_token', 'http_status', 'bridge_down']) used.add(`error_${code}`);
 for (const match of JSON.stringify(manifest).matchAll(/__MSG_([A-Za-z0-9_]+)__/g)) used.add(match[1]);
 for (const key of used) assert.ok(catalogs.zh_CN[key], `Missing message ${key}`);
 console.log(`Checked ${all.length} extension files: syntax, Manifest V3, local references, version, CSP and permissions.`);

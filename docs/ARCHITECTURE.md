@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.en.md)
 
-界面语言、所选词的语言和词典地区分别处理。例如，英文界面仍然可以查“學習”，而中文界面查 `apple` 时也不会把词头改成中文。当前正式支持英文，以及大陆、香港、台湾的中文字词。
+界面语言、所选词的语言和词典地区分别处理。例如，英文界面仍然可以查“學習”，而中文界面查 `apple` 时也不会把词头改成中文。自动模式支持英文及大陆、香港、台湾的中文字词；显式模式新增日、韩、法、德、西语到简体中文的词卡。
 
 ## 查询路径
 
@@ -45,9 +45,13 @@
 
 ## 扩展语言
 
-新增语言需要注册 profile 和 adapter，提供读音 locale、词条来源与展示策略。词卡的展开、追加、移除和退出逻辑可以复用。契约测试用一个独立的测试语言验证这条路径；它只用于验证架构，不是已经上线的额外语种。
+新增语言需要注册 profile 和 adapter，提供读音 locale、词条来源与展示策略。日、韩、法、德、西语 profile 标记为 `explicitOnly`，通过 `targetLanguage: auto | ja | ko | fr | de | es` 选择，避免自动模式把日语汉字当中文、把所有拉丁字母当英语。日、韩按各自语言分词；法、德、西语保留重音及大小写。原有契约测试中的假想语种仍只用于架构验证。
 
-同属拉丁字母的语言不能仅靠字符形状准确区分。将来增加这类语言时，还需要明确的学习语言选择或可靠的识别策略，不能把当前英文规则直接宣传成多语识别。
+`normalizeWord(value, targetLanguage)` 和 `parseSelection(text, uiLanguage, targetLanguage)` 贯穿选区与 worker。内容脚本先捕获原选区，再刷新设置并解析；worker 用同一份设置快照验证词头和选择 adapter。换语言会重查已有卡片、清掉旧朗读与例句，版本 guard 阻止旧回复覆盖新结果。
+
+`multilingual.js` 只查中文维基词典版本，使用官方 `/v1/zh/word/{word}?lang={language}`。严格核对返回词头、版本及存在的语言字段；紧凑响应缺少词种字段时，依赖官方 `lang` 过滤。中文释义与中文例句翻译经 OpenCC 转简体，原词和原语例句不转换。`preferredMeaningLanguage: 'zh'` 保证英文界面也先显示简中释义，朗读使用词头语言的 locale。
+
+确认缺词的 404 与有效结构但无中文义项分别归为 `not-found` 和 `translation-unavailable`；通用 404、格式错误和网络错误不冒充缺词。无中文义项仍可通过词典导向看原站。缺例句、缺读音如实显示，不从引用字段反推例句，不用中文句子冒充原语句子。
 
 ## 导向库（链接，不抓取）
 
@@ -61,6 +65,8 @@ globalThis.LexiLoomGuidance.resolve(entry, { uiLanguage, uiRegion, settings })
 
 返回最多 3 个冻结的链接对象，按 `priority` 升序挑选，重复 URL 去重：
 
+`resolveAll(entry, options)` 返回完整匹配目录，供 `navigation.html` 使用。导航页显式选择 `en / zh / ja / ko / fr / de / es`，不根据拉丁字母或纯汉字猜测新语言，也不改变中英文词卡的识别与正文 adapter。
+
 | 字段 | 含义 |
 | --- | --- |
 | `id` | 内置站点 id（如 `zh-wiktionary`、`en-oxford-learner`）或 `custom-<序号>` |
@@ -71,14 +77,16 @@ globalThis.LexiLoomGuidance.resolve(entry, { uiLanguage, uiRegion, settings })
 | `mode` | 恒为 `"link-only"` |
 | `license` | 站点许可；没有标注时为空字符串（如 `CC BY-SA 4.0`、`CC BY-ND 3.0 TW`） |
 
-匹配规则：`entry.language`（`zh` / `en`）先筛语言；`entry.region` 过滤带 `regions` 的站点，词条没有地区时用 `options.uiRegion`；`options.uiLanguage` 按 `en` / `zh` 过滤带 `uiLanguages` 的站点。自定义模板不限语言，`priority` 为 0，排在内置站点前面。
+匹配规则：`entry.language` 先筛语言；未知语言不回退英文站。`entry.region` 过滤带 `regions` 的站点，词条没有地区时用 `options.uiRegion`；`options.uiLanguage` 按 `en` / `zh` 过滤带 `uiLanguages` 的站点。自定义模板的可选 `language` 限定词头语言，省略或 `*` 为通用；`priority` 为 0，排在内置站点前面。
 
 ### 自定义模板
 
-格式为 `名称 | https://…/{word}`，一行一条，`#` 开头的行忽略，最多 6 条。`sanitize` 在保存前重新校验：必须以 `https://` 开头、必须包含 `{word}`、占位符之外不能出现其他花括号，名称最长 60 字符，模板最长 300 字符；不合格的条目直接丢弃，不写入存储。
+格式为 `名称 | https://…/{word}`，或 `fr | 名称 | https://…/{word}` 指定语言，一行一条，`#` 开头的行忽略，最多 6 条。名称最多 60 Unicode 字符，模板最多 300 字符。必须使用 HTTPS、包含 `{word}`，不能带凭据、控制字符、反斜线或额外花括号；词头不能改变 URL 的 authority。词头最多 64 Unicode 字符，不通过截断制造另一个查询词。
+
+`validateCustom` 在写入前严格校验整组模板，任一无效则整次设置保存失败，不写入部分结果。`sanitize` 仅用于容错读取旧存储与生成公开状态，不把静默丢条当作保存成功。
 
 ### 设置与刷新
 
-`guidanceDisabled`（关闭的内置站点 id 数组）和 `guidanceCustom`（`{ name, template }` 数组）存在 `chrome.storage.local` 的 `settings` 里。worker 的 `sanitize` 清理后再写，`GET_SETTINGS` 只把 `publicSettings` 的结果发给内容脚本。
+`guidanceDisabled`（关闭的内置站点 id 数组）和 `guidanceCustom`（`{ name, template, language? }` 数组）存在 `chrome.storage.local` 的 `settings` 里。设置页只发送用户改过的字段。worker 的 `GET_SETTINGS` 与广播共用公开结构，包含 `englishProvider` 和导向语言范围，不含服务口令。
 
-内容脚本监听 `chrome.storage.onChanged`（`settings` 键）：设置变化时重新解析并渲染已打开词卡的导向外链；`provider`、`englishProvider` 或 `chineseRegion` 变化时重新查词。这样已打开的卡片不用等下一次选词，换源后也不会继续显示旧词源的正文。
+存储限制为受信上下文，worker 保存后向内容脚本广播 `SETTINGS_CHANGED`；内容脚本据此刷新外链，或在 `provider`、`englishProvider`、`chineseRegion`、`targetLanguage` 改变时重新查词。词卡上的导航按钮通过 `OPEN_NAVIGATION` 让 worker 打开扩展页，词头、语言和地区放在 URL 片段里，不需把导航页设为网页可访问资源。

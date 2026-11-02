@@ -15,7 +15,7 @@
     "message": "讓好奇，自然展開。"
   },
   "popupLead": {
-    "message": "雙擊英文或中文字詞，就地查看釋義。"
+    "message": "先選查詞語言，再雙擊網頁中的詞。"
   },
   "popupEnable": {
     "message": "啟用網頁查詞"
@@ -156,7 +156,7 @@
     "message": "從一個詞開始"
   },
   "guide1": {
-    "message": "雙擊英文或中文字詞，出現釋義卡；也可以拖選後點擊查詞。"
+    "message": "先選查詞語言，再雙擊網頁中的單詞；中文或多詞也可拖選後點擊查詞按鈕。"
   },
   "guide2": {
     "message": "點擊詞卡展開釋義、音標、用法和例句；再次點擊詞頭收起。"
@@ -435,7 +435,7 @@
     "message": "無法連接本地詞典服務，請確認服務正在運行。"
   },
   "error_invalid_word": {
-    "message": "英文單詞最多 48 個字符，中文字詞最多 32 字。"
+    "message": "請選擇當前查詞語言支持的單詞或字詞（中文、日語、韓語每詞最多 32 字符，其餘最多 48 字符）。"
   },
   "error_unsupported_format": {
     "message": "詞典返回的數據格式暫不支持，請打開原詞典查看。"
@@ -573,7 +573,7 @@
     "message": "英文維基詞典 · WiktApi"
   },
   "guidanceSection": {
-    "message": "延伸查詢 · 在詞典站查看"
+    "message": "拓展查詢 · 在詞典站查看"
   },
   "guidanceOpen": {
     "message": "$1 ↗"
@@ -582,27 +582,108 @@
     "message": "網址導向庫"
   },
   "guidanceLead": {
-    "message": "按詞條語言與地區挑選可署名的詞典站外鏈。插件只產生連結，不抓取、不轉存這些網站的正文。"
+    "message": "按詞條語言與地區挑選可署名的詞典站外鏈。插件只生成鏈接，不抓取、不轉存這些網站的正文。"
   },
   "guidanceBuiltinHelp": {
-    "message": "按當前語言與地區自動匹配；啟用的站點會顯示在詞卡底部，每次最多 3 個。"
-  },
-  "guidanceGroupEn": {
-    "message": "英文詞條"
-  },
-  "guidanceGroupZh": {
-    "message": "中文字詞"
+    "message": "詞卡按語言和地區顯示前 3 個入口。詞典導航頁會顯示全部匹配站點。"
   },
   "guidanceCustomLabel": {
-    "message": "自訂連結模板"
+    "message": "自定義鏈接模板"
   },
   "guidanceCustomHelp": {
-    "message": "每行一個：名稱 | https://詞典站路徑/{word}。必須使用 HTTPS 並包含 {word} 佔位符；最多 6 條。"
+    "message": "每行填寫“名稱 | https://example.com/word/{word}”，適用於所有語言。也可用“fr | 名稱 | https://…/{word}”指定語言（en、zh、ja、ko、fr、de、es）。最多 6 條；名稱最多 60 字符，網址最多 300 字符；{word} 只能放在路徑、查詢或片段中。"
   },
   "guidanceCustomPlaceholder": {
-    "message": "我的词典 | https://example.com/word/{word}"
+    "message": "我的詞典 | https://example.com/word/{word}"
   },
   "guidanceInvalid": {
-    "message": "自訂模板無效：第 $1 行「$2」。"
+    "message": "第 $1 行模板無效：$2。請檢查語言、長度、網址格式與條數。"
+  },
+  "navTitle": {
+    "message": "詞典導航"
+  },
+  "navIntro": {
+    "message": "選擇詞頭語言，在原站查看更多釋義。日、韓、法、德、西語也可在工具欄選擇查詞語言後，直接雙擊網頁中的詞，查看簡體中文詞卡。"
+  },
+  "navWord": {
+    "message": "要查的詞"
+  },
+  "navLanguage": {
+    "message": "詞頭語言"
+  },
+  "navRegion": {
+    "message": "中文詞典地區"
+  },
+  "navSearch": {
+    "message": "尋找詞典"
+  },
+  "navEmpty": {
+    "message": "先輸入一個要查的詞。"
+  },
+  "navInvalidWord": {
+    "message": "請輸入不超過 64 個字符的詞頭，不能包含控制字符。"
+  },
+  "navNoSites": {
+    "message": "這個語言沒有已啟用的站點。可以在設置中啟用詞典，或添加對應語言的模板。"
+  },
+  "navResults": {
+    "message": "$1 · $2 · $3 個詞典入口"
+  },
+  "navSettings": {
+    "message": "管理詞典與模板"
+  },
+  "navLanguageEn": {
+    "message": "英語"
+  },
+  "navLanguageZh": {
+    "message": "中文"
+  },
+  "navLanguageJa": {
+    "message": "日語"
+  },
+  "navLanguageKo": {
+    "message": "韓語"
+  },
+  "navLanguageFr": {
+    "message": "法語"
+  },
+  "navLanguageDe": {
+    "message": "德語"
+  },
+  "navLanguageEs": {
+    "message": "西班牙語"
+  },
+  "navAllSites": {
+    "message": "完整詞典目錄。點擊入口後才會訪問原站。"
+  },
+  "navOpen": {
+    "message": "在 $1 查看 ↗"
+  },
+  "navInvalidLanguage": {
+    "message": "請選擇支持的詞頭語言；這個語言代碼暫未接入導航。"
+  },
+  "targetLanguageLabel": {
+    "message": "查詞語言"
+  },
+  "targetLanguageAuto": {
+    "message": "自動 · 中文和英文"
+  },
+  "targetLanguageHelp": {
+    "message": "選擇日、韓、法、德、西語後，詞卡譯為簡體中文。"
+  },
+  "providerMultilingual": {
+    "message": "中文維基詞典 · 簡中"
+  },
+  "noteMultilingual": {
+    "message": "當前語言從中文維基詞典讀取詞條，釋義顯示為簡體中文；詞頭和原語例句保持原樣。讀音、譯文或例句缺項會說明。下方來源和地區設置保留給中英文自動模式。"
+  },
+  "source_wiktionary_multilingual": {
+    "message": "中文維基詞典 · WiktApi"
+  },
+  "noticeMultilingualReadingMissing": {
+    "message": "詞源未提供此詞的讀音，可嘗試系統朗讀。"
+  },
+  "error_translation_unavailable": {
+    "message": "詞源暫未提供此詞的中文釋義，可在詞典導航查看原站。"
   }
 }

@@ -25,6 +25,44 @@ test('lookup context keeps UI language, headword language and Chinese region sep
   assert.equal(chineseInEnglish.adapterId, 'chinese');
 });
 
+test('explicit foreign targets share the adapter contract while retaining headword spelling and source reading locales', async () => {
+  const expected = [['ja', '学校', 'ja-JP'], ['ko', '안녕', 'ko-KR'], ['fr', 'école', 'fr-FR'],
+    ['de', 'Haus', 'de-DE'], ['es', 'niño', 'es-ES']];
+  const seen = [];
+  const engine = createDictionaryEngine({ adapters: {
+    multilingual: async (word, context) => {
+      seen.push(context.language);
+      assert.equal(context.adapterId, 'multilingual');
+      return { ...original('原创简体中文释义。'), word, pronunciations: [{ phonetic: '/fixture/' }],
+        meanings: [{ language: 'zh', definitions: [{ definition: '原创简体中文释义。', examples: [] }] }] };
+    },
+    free: () => { throw new Error('An explicit foreign target must not use the English adapter.'); },
+    chinese: () => { throw new Error('An explicit Japanese Han headword must not use the Chinese adapter.'); }
+  } });
+  for (const [targetLanguage, word, speechLocale] of expected) {
+    const context = registry.lookupContext(word, { uiLanguage: 'en-US', settings: { targetLanguage, chineseRegion: 'HK', provider: 'demo' } });
+    assert.equal(context.word, word);
+    assert.equal(context.language, targetLanguage);
+    assert.equal(context.ui.language, 'en');
+    assert.equal(context.ui.region, 'HK');
+    assert.equal(context.region, '');
+    const entry = await engine.lookup(word, { uiLanguage: 'en-US', settings: { targetLanguage } });
+    const view = createCardView(entry, 'en-US');
+    assert.equal(entry.status, 'ok');
+    assert.equal(entry.word, word);
+    assert.equal(entry.profileId, targetLanguage);
+    assert.equal(entry.pronunciations[0].locale, speechLocale);
+    assert.equal(view.summary, '原创简体中文释义。');
+    assert.equal(view.showTranslations, true);
+    assert.equal(view.maxExamples, 2);
+    assert.equal(view.speechFallbackLocale, speechLocale);
+    assert.equal(context.profile.presentation.preferredMeaningLanguage, 'zh');
+  }
+  assert.deepEqual(seen, expected.map(([language]) => language));
+  assert.equal(registry.lookupContext('学校', { settings: { targetLanguage: 'fr' } }), null);
+  assert.equal(registry.lookupContext('Haus', { settings: { targetLanguage: 'pt' } }), null);
+});
+
 test('entry boundary keeps attribution and original MOE wording, while dropping secrets and unsafe URLs', () => {
   const raw = {
     ...original('unused'), language: 'en', privateKey: 'hidden-private-value', queryWord: '學習', queryWords: ['学习', '學習'],
@@ -140,9 +178,18 @@ test('oversized response cancellation releases the shared fetch slot', async () 
   const limited = createLimitedFetch(async () => ++request === 1
     ? new Response(new ReadableStream({ cancel() { cancelled = true; } }), { headers: { 'Content-Length': '1000001' } })
     : Response.json({ ok: true }), 1);
-  await assert.rejects(limited('https://example.org/oversized'), /size limit/);
+  await assert.rejects(limited('https://example.org/oversized'), { code: 'response-too-large' });
   assert.equal(cancelled, true);
   assert.deepEqual(await (await limited('https://example.org/next')).json(), { ok: true });
+  let streamedCancelled = false, streamedRequests = 0;
+  const streamed = createLimitedFetch(async () => ++streamedRequests === 1
+    ? new Response(new ReadableStream({
+      start(controller) { controller.enqueue(new Uint8Array(1_000_001)); },
+      cancel() { streamedCancelled = true; }
+    })) : Response.json({ ok: true }), 1);
+  await assert.rejects(streamed('https://example.org/oversized-stream'), { code: 'response-too-large' });
+  assert.equal(streamedCancelled, true);
+  assert.deepEqual(await (await streamed('https://example.org/after-stream')).json(), { ok: true });
 });
 
 test('invalid words and paused lookup do not invoke any adapter', async () => {
@@ -151,4 +198,17 @@ test('invalid words and paused lookup do not invoke any adapter', async () => {
   assert.equal((await engine.lookup('https://example.org/', { uiLanguage: 'en-US' })).error.code, 'invalid-word');
   assert.equal((await engine.lookup('apple', { uiLanguage: 'en-US', settings: { enabled: false } })).error.code, 'disabled');
   assert.equal(calls, 0);
+});
+
+test('the entry boundary preserves validated non-BMP headwords without splitting Unicode characters', () => {
+  const word = '\u{1DF00}'.repeat(40); // Latin Extended-G; this tests bounds, not dictionary coverage.
+  const context = registry.lookupContext(word, { settings: { targetLanguage: 'fr' } });
+  assert.ok(context);
+  const entry = normalizeDictionaryEntry({ word, displayWord: word, queryWord: word, queryWords: [word], status: 'not-found' }, context);
+  assert.equal(entry.word, word);
+  assert.equal(entry.displayWord, word);
+  assert.equal(entry.lemma, word);
+  assert.equal(entry.queryWord, word);
+  assert.deepEqual(entry.queryWords, [word]);
+  assert.equal(entry.word.isWellFormed(), true);
 });

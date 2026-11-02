@@ -1,13 +1,15 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title data-i18n="extName">LexiLoom · 语织</title><link rel="stylesheet" href="ui/pages.css"></head>
 <body class="popup">
-  <div class="brand"><img src="icons/icon48.png" alt=""><div class="brand-name">LexiLoom <span data-i18n="brandCn">语织</span></div></div>
+  <div class="brand"><img src="icons/icon48.png" alt=""><div class="brand-name">LexiLoom <span class="brand-cn" data-i18n="brandCn">语织</span></div></div>
   <h1 data-i18n="popupHeading">让好奇，自然展开。</h1>
   <p data-i18n="popupLead">双击一个单词，在阅读的地方理解它。</p>
   <div class="divider"></div>
   <label class="switch-row"><span data-i18n="popupEnable">启用网页查词</span><input class="switch" id="enabled" type="checkbox" checked data-i18n-aria="popupEnable" aria-label="启用网页查词"></label>
   <p class="muted" style="margin-top:12px"><span data-i18n="popupProviderPrefix">词典来源：</span><span id="provider">正在读取…</span></p>
+  <label class="field"><span data-i18n="targetLanguageLabel">查词语言</span><select id="target-language" disabled><option value="auto" data-i18n="targetLanguageAuto">自动识别中英文</option><option value="ja" data-i18n="navLanguageJa">日语</option><option value="ko" data-i18n="navLanguageKo">韩语</option><option value="fr" data-i18n="navLanguageFr">法语</option><option value="de" data-i18n="navLanguageDe">德语</option><option value="es" data-i18n="navLanguageEs">西班牙语</option></select><small data-i18n="targetLanguageHelp"></small></label>
   <button class="primary" id="try" data-i18n="popupTry">打开交互体验页 ↗</button>
+  <button class="secondary" id="navigation" data-i18n="navTitle">词典导航</button>
   <button class="secondary" id="options" data-i18n="popupOptions">词典与连接设置</button>
   <div class="status" role="status" id="status"></div>
   <footer><span class="muted" id="version"></span><span class="pill">READ · DISCOVER</span></footer>

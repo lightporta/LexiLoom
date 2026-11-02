@@ -1,0 +1,114 @@
+{
+  "version": "0.6.0",
+  "checkedAt": "2026-11-02T12:43:19.451Z",
+  "platform": "darwin",
+  "node": "v22.23.4",
+  "browser": "156.0.8078.4",
+  "status": "passed",
+  "uiLanguage": "zh-CN",
+  "localeMode": "controlled chrome.i18n.getUILanguage; original product code and live dictionary requests",
+  "mode": "real Chromium; live public WiktApi; no dictionary fetch replacement",
+  "results": [
+    {
+      "sourceLanguage": "ja",
+      "word": "学校",
+      "status": "passed",
+      "definitionExcerpt": "学校",
+      "pronunciationCount": 2,
+      "systemSpeechAvailable": true,
+      "pronunciationLocales": [
+        "ja-JP"
+      ],
+      "hasSourcePhonetic": true,
+      "exampleCount": 0,
+      "licenseUrls": [
+        "https://creativecommons.org/licenses/by-sa/4.0/"
+      ],
+      "sourceUrl": "https://zh.wiktionary.org/wiki/%E5%AD%A6%E6%A0%A1",
+      "apiUrl": "https://api.wiktapi.dev/v1/zh/word/%E5%AD%A6%E6%A0%A1?lang=ja",
+      "screenshot": "test-results/browser-multilingual-live/ja.png",
+      "elapsedMs": 1479
+    },
+    {
+      "sourceLanguage": "ko",
+      "word": "안녕",
+      "status": "passed",
+      "definitionExcerpt": "你好",
+      "pronunciationCount": 4,
+      "systemSpeechAvailable": true,
+      "pronunciationLocales": [
+        "ko-KR"
+      ],
+      "hasSourcePhonetic": true,
+      "exampleCount": 2,
+      "licenseUrls": [
+        "https://creativecommons.org/licenses/by-sa/4.0/"
+      ],
+      "sourceUrl": "https://zh.wiktionary.org/wiki/%EC%95%88%EB%85%95",
+      "apiUrl": "https://api.wiktapi.dev/v1/zh/word/%EC%95%88%EB%85%95?lang=ko",
+      "screenshot": "test-results/browser-multilingual-live/ko.png",
+      "elapsedMs": 667
+    },
+    {
+      "sourceLanguage": "fr",
+      "word": "bonjour",
+      "status": "passed",
+      "definitionExcerpt": "早安；你好",
+      "pronunciationCount": 4,
+      "systemSpeechAvailable": true,
+      "pronunciationLocales": [
+        "fr-FR"
+      ],
+      "hasSourcePhonetic": true,
+      "exampleCount": 2,
+      "licenseUrls": [
+        "https://creativecommons.org/licenses/by-sa/4.0/"
+      ],
+      "sourceUrl": "https://zh.wiktionary.org/wiki/bonjour",
+      "apiUrl": "https://api.wiktapi.dev/v1/zh/word/bonjour?lang=fr",
+      "screenshot": "test-results/browser-multilingual-live/fr.png",
+      "elapsedMs": 664
+    },
+    {
+      "sourceLanguage": "de",
+      "word": "Haus",
+      "status": "passed",
+      "definitionExcerpt": "房子、住房",
+      "pronunciationCount": 3,
+      "systemSpeechAvailable": true,
+      "pronunciationLocales": [
+        "de-DE"
+      ],
+      "hasSourcePhonetic": true,
+      "exampleCount": 0,
+      "licenseUrls": [
+        "https://creativecommons.org/licenses/by-sa/4.0/"
+      ],
+      "sourceUrl": "https://zh.wiktionary.org/wiki/Haus",
+      "apiUrl": "https://api.wiktapi.dev/v1/zh/word/Haus?lang=de",
+      "screenshot": "test-results/browser-multilingual-live/de.png",
+      "elapsedMs": 645
+    },
+    {
+      "sourceLanguage": "es",
+      "word": "niño",
+      "status": "passed",
+      "definitionExcerpt": "小孩，儿童",
+      "pronunciationCount": 4,
+      "systemSpeechAvailable": true,
+      "pronunciationLocales": [
+        "es-ES"
+      ],
+      "hasSourcePhonetic": true,
+      "exampleCount": 0,
+      "licenseUrls": [
+        "https://creativecommons.org/licenses/by-sa/4.0/"
+      ],
+      "sourceUrl": "https://zh.wiktionary.org/wiki/ni%C3%B1o",
+      "apiUrl": "https://api.wiktapi.dev/v1/zh/word/ni%C3%B1o?lang=es",
+      "screenshot": "test-results/browser-multilingual-live/es.png",
+      "elapsedMs": 670
+    }
+  ],
+  "pageErrors": []
+}

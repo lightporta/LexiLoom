@@ -75,7 +75,7 @@
     const ui = registry.uiProfile(uiLanguage);
     const presentation = profile?.presentation || {};
     const bilingual = Boolean(presentation.bilingual || ui.language !== 'en');
-    const desiredLanguage = ui.language;
+    const desiredLanguage = presentation.preferredMeaningLanguage || ui.language;
     const meaning = entry?.meanings?.find(item => item.language === desiredLanguage && item.definitions?.length)
       || entry?.meanings?.find(item => item.definitions?.length);
     const definition = meaning?.definitions?.[0];

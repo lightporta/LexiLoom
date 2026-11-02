@@ -18,8 +18,19 @@ test('limits chains to 8 different words and reports truncation', () => {
   assert.equal(parsed.words.length, 8); assert.equal(parsed.truncated, true);
 });
 test('public settings never disclose the local bridge token', () => {
-  assert.deepEqual(publicSettings({ enabled: false, provider: 'oxford', bridgeToken: 'secret' }), { enabled: false, provider: 'oxford', chineseRegion: 'auto' });
+  assert.deepEqual(publicSettings({ enabled: false, provider: 'oxford', bridgeToken: 'secret' }), { enabled: false, provider: 'oxford', englishProvider: 'free', chineseRegion: 'auto', targetLanguage: 'auto' });
   assert.equal(publicSettings({ provider: 'https://evil.example' }).provider, 'smart');
+  assert.equal(publicSettings({ englishProvider: 'demo' }).englishProvider, 'demo');
+  assert.equal(publicSettings({ englishProvider: 'https://evil.example' }).englishProvider, 'free');
+});
+test('target-language settings default to the legacy automatic mode and expose only supported choices', () => {
+  assert.equal(globalThis.LexiLoomCore.DEFAULT_SETTINGS.targetLanguage, 'auto');
+  for (const targetLanguage of ['auto', 'ja', 'ko', 'fr', 'de', 'es']) {
+    assert.equal(publicSettings({ targetLanguage, bridgeToken: 'secret' }).targetLanguage, targetLanguage);
+  }
+  for (const targetLanguage of [undefined, null, 'en', 'pt', 'fr-FR', 'https://example.org/']) {
+    assert.equal(publicSettings({ targetLanguage }).targetLanguage, 'auto');
+  }
 });
 test('accepts only HTTPS links without credentials', () => {
   assert.equal(safeHttps('javascript:alert(1)'), '');

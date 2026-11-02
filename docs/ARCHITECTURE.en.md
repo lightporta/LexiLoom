@@ -2,7 +2,7 @@
 
 [中文](ARCHITECTURE.md)
 
-UI language, headword language and dictionary region are separate inputs. An English UI can look up “學習”; a Chinese UI looking up `apple` still keeps an English headword. Shipped support covers English and Chinese for mainland China, Hong Kong and Taiwan.
+UI language, headword language and dictionary region are separate inputs. Automatic mode covers English and Chinese for mainland China, Hong Kong and Taiwan. Explicit targets add Japanese, Korean, French, German and Spanish cards with Simplified Chinese definitions, including in an English interface.
 
 ## Lookup path
 
@@ -45,9 +45,13 @@ Settings saves are serialized partial updates. Only supplied fields change, so a
 
 ## Adding a language
 
-Register a profile and adapter with a speech locale, sources and presentation policy. The card's expansion, grouping, removal and close behavior remains reusable. A hypothetical language in the contract tests verifies this extension point; it is not advertised as an additional shipped language.
+Register a profile and adapter with a speech locale, sources and presentation policy. New profiles are `explicitOnly`, selected by `targetLanguage: auto | ja | ko | fr | de | es`. Japanese/Korean use their own segmentation locale; foreign case and accents remain intact. The hypothetical contract-test language still tests the extension point only.
 
-Languages sharing Latin script cannot be reliably distinguished by character shape alone. Supporting them will also need an explicit target-language choice or a suitable detection strategy.
+`normalizeWord(value, targetLanguage)` and `parseSelection(text, uiLanguage, targetLanguage)` carry the explicit choice through the pipeline. Content scripts capture the selection before refreshing settings and parsing. Workers use one settings snapshot for validation and dispatch. Language changes clear old reading/example controls and repeat lookup; version guards reject stale results.
+
+`multilingual.js` requests `/v1/zh/word/{word}?lang={language}`. It checks the headword, edition and any explicit source-language fields; compact records without those fields rely on the documented API filter. Only Chinese glosses and Chinese example translations are converted to Simplified. Headwords and source-language examples keep their spelling. `preferredMeaningLanguage: 'zh'` keeps Chinese definitions visible in an English UI; speech uses the headword language.
+
+Confirmed missing entries and valid entries lacking Chinese glosses become `not-found` and `translation-unavailable` respectively. Generic HTTP errors do not establish absence. A coverage gap retains dictionary navigation, while missing readings/examples are identified without inventing content or interpreting a citation as an example.
 
 ## Link directory (links, not fetches)
 
@@ -61,6 +65,8 @@ globalThis.LexiLoomGuidance.resolve(entry, { uiLanguage, uiRegion, settings })
 
 Returns at most three frozen link objects, selected by ascending `priority` with duplicate URLs removed:
 
+`resolveAll(entry, options)` returns the full directory for `navigation.html`. That page explicitly selects `en / zh / ja / ko / fr / de / es`, rather than guessing a new language from Latin letters or Han characters. It does not change Chinese/English card detection or adapters.
+
 | Field | Meaning |
 | --- | --- |
 | `id` | Built-in site id (such as `zh-wiktionary` or `en-oxford-learner`) or `custom-<number>` |
@@ -71,14 +77,16 @@ Returns at most three frozen link objects, selected by ascending `priority` with
 | `mode` | Always `"link-only"` |
 | `license` | Site license, or an empty string when none is declared (for example `CC BY-SA 4.0` or `CC BY-ND 3.0 TW`) |
 
-Matching: `entry.language` (`zh` / `en`) selects the language; `entry.region` filters sites that declare `regions`, falling back to `options.uiRegion` when the entry has no region; `options.uiLanguage` filters sites that declare `uiLanguages` as `en` / `zh`. Custom templates are language-neutral, have `priority` 0 and come before built-in sites.
+Matching: `entry.language` selects the language; unknown languages do not fall back to English sites. `entry.region` filters sites declaring `regions`, falling back to `options.uiRegion`; `options.uiLanguage` filters sites declaring `uiLanguages`. A custom template's optional `language` scopes it to that headword language; omission or `*` is universal. Custom templates have priority 0.
 
 ### Custom templates
 
-The format is `Name | https://…/{word}`, one per line, at most six; lines starting with `#` are ignored. `sanitize` validates again before saving: the template must start with `https://`, must contain `{word}`, must not contain other braces, the name is limited to 60 characters and the template to 300 characters. Entries that fail are dropped and not stored.
+Use `Name | https://…/{word}`, or `fr | Name | https://…/{word}` for a language, up to six rows; `#` starts a comment. Names allow 60 Unicode code points and templates 300 characters. HTTPS and `{word}` are required; credentials, control characters, backslashes and extra braces are rejected. The headword cannot change the URL authority. A query allows up to 64 Unicode code points without truncation.
+
+`validateCustom` validates the entire group before writing. One invalid row rejects the save without partial writes. `sanitize` tolerates damaged older storage and creates public snapshots; it does not silently drop rows from a successful save.
 
 ### Settings and refresh
 
-`guidanceDisabled` (array of disabled built-in site ids) and `guidanceCustom` (array of `{ name, template }`) live in the `settings` key of `chrome.storage.local`. The worker writes them only after `sanitize`, and `GET_SETTINGS` sends the content script just the `publicSettings` result.
+`guidanceDisabled` and `guidanceCustom` (`{ name, template, language? }`) live in local `settings`. Options send only changed fields. `GET_SETTINGS` and broadcasts share a public shape, including `englishProvider` and template language scope, without the bridge token.
 
-The content script listens to `chrome.storage.onChanged` (the `settings` key). On a settings change it resolves and renders the links of cards that are already open; when `provider`, `englishProvider` or `chineseRegion` changes it looks the word up again. Open cards therefore do not wait for the next selection, and they do not keep showing the previous source's text after a source change.
+Storage is limited to trusted contexts. The worker broadcasts `SETTINGS_CHANGED` after saves; content scripts refresh links or repeat lookup when `provider`, `englishProvider`, `chineseRegion` or `targetLanguage` changes. A card's `OPEN_NAVIGATION` request asks the worker to open the extension page with an encoded URL fragment. The page need not be web-accessible.

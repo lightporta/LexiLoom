@@ -15,7 +15,7 @@ export function createLimitedFetch(fetchImpl, maximum = 4) {
       const length = Number(response.headers?.get?.('content-length') || 0);
       if (length > MAX_RESPONSE_BYTES) {
         await response.body?.cancel?.();
-        throw new Error('Dictionary response exceeds the size limit.');
+        throw Object.assign(new Error('Dictionary response exceeds the size limit.'), { code: 'response-too-large' });
       }
       if (!response.body) return response;
       const reader = response.body.getReader();
@@ -24,7 +24,7 @@ export function createLimitedFetch(fetchImpl, maximum = 4) {
         for (;;) {
           const { done, value } = await reader.read(); if (done) break;
           size += value.byteLength;
-          if (size > MAX_RESPONSE_BYTES) throw new Error('Dictionary response exceeds the size limit.');
+          if (size > MAX_RESPONSE_BYTES) throw Object.assign(new Error('Dictionary response exceeds the size limit.'), { code: 'response-too-large' });
           chunks.push(value);
         }
       } catch (error) { await reader.cancel().catch(() => {}); throw error; }

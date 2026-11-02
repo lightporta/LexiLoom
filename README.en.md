@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-Look up a word without leaving the page. Double-click an English word. For Chinese, select the word and click the small lookup button. A short definition shows up beside the text; open the card for pronunciation, usage and examples. Several cards can stay on the page, and each one opens on its own.
+Look up a word without leaving the page. Chinese and English are detected automatically; for Japanese, Korean, French, German and Spanish, choose the word language in the toolbar first, then double-click a word or select it and click the lookup button. A short definition shows up beside the text; open the card for pronunciation, usage and examples. Several cards can stay on the page, and each one opens on its own.
 
 ![English word card](docs/browser-single.png)
 
@@ -37,6 +37,10 @@ Some simplified characters have several traditional counterparts. For a characte
 
 In the English interface, an English word shows the English definition, pronunciation and examples. A Chinese word still keeps its Chinese spelling and reading.
 
+Japanese, Korean, French, German and Spanish words use the same cards. Change **Word language** in the toolbar or settings to the target language, then double-click or select a word on the page. The first version shows **Simplified Chinese definitions** whatever the interface language; headwords, source-language examples and letter case stay unchanged. Speech follows the headword language, and cards keep at most two examples.
+
+These languages query Chinese Wiktionary. When the corpus has no Chinese definition, reading or example, the card says so; a service failure is never reported as a missing word. For example “こんにちは” currently has no usable Chinese definition, and “学校” has no examples. Switching back to “Automatic · Chinese and English” restores the previous sources and Chinese region. Japanese and Korean words allow up to 32 characters, French, German and Spanish up to 48; sentence translation is not included.
+
 Chrome's own pages, the extension store, the built-in PDF viewer, text fields, editors and iframes are not covered yet.
 
 ## Where the words come from
@@ -52,6 +56,7 @@ Chinese words follow the region:
 - Hong Kong prefers a Wiktionary reading marked Cantonese and Hong Kong.
 - The English explanation comes from the Chinese entry in English Wiktionary.
 - [Free Dictionary](https://dictionaryapi.dev/) supplies the English definition and audio for English words.
+- Japanese, Korean, French, German and Spanish entries come from the matching language edition of Chinese Wiktionary through WiktApi. Chinese definitions are converted to Simplified spelling; source-language headwords and examples are not rewritten, and no unpublished translation-site APIs are used.
 - Oxford and Cambridge are optional. They need your own official access and the local dictionary service. See [bridge/README.en.md](bridge/README.en.md).
 - The English demo entries are written for this project. The Chinese practice section uses online dictionaries.
 
@@ -66,7 +71,15 @@ An expanded card lists up to three dictionary links you can open. They are chose
 
 Region and interface language filter the list. A Hong Kong headword prefers Words.hk and the Traditional Han Dian entry, a Taiwan headword prefers Moedict, and a mainland headword prefers the simplified Han Dian entry. Youdao, Bing and Cambridge English–Chinese can appear when a Chinese interface looks up an English word; an English interface keeps English-only sites. At most three links are taken by priority, so disabling a site or adding a custom template changes the result.
 
-Settings can turn each built-in site off. You can also add custom templates as `Name | https://…/{word}`: HTTPS only, `{word}` required, at most six. The background worker validates and sanitizes them before they are stored.
+Open **Dictionary navigation** from the toolbar popup or the bottom of a card to see every matching site. Enter a headword and choose Chinese, English, Japanese, Korean, French, German or Spanish explicitly. Japanese and Korean offer their own Wiktionary; French also has Larousse, German Duden, and Spanish RAE. Case, accents and spelling stay as entered.
+
+Japanese, Korean, French, German and Spanish also have webpage word cards. Choose the word language in the toolbar popup or settings, then double-click or select a word. These cards currently show **Simplified Chinese definitions**, including in an English interface. Original headwords, case and source-language examples stay unchanged; speech uses the source language and examples are limited to two.
+
+The source is Chinese Wiktionary through WiktApi. Missing Chinese definitions, readings and examples are identified separately from an absent word or a service failure. Switching back to automatic Chinese/English mode retains your previous sources and Chinese region. Japanese and Korean words allow up to 32 characters, French, German and Spanish up to 48; Chinese headwords stay at 32. Sentence translation is not included.
+
+The navigation page has its own language selector. It remains useful when a card lacks Chinese coverage; its links do not confirm that a site contains the headword.
+
+Settings can turn each built-in site off and add up to six custom templates. `Name | https://…/{word}` applies to all languages; `fr | Name | https://…/{word}` applies only to French. Other codes are `en`, `zh`, `ja`, `ko`, `de` and `es`. Templates require HTTPS, with `{word}` in the path, query or fragment. Names are limited to 60 characters and URLs to 300. Invalid or oversized entries reject the save without truncating or dropping rows.
 
 The directory only generates links. The extension does not fetch or rehost those pages, and it adds no host permissions for them: the manifest still lists only local storage and the same four lookup hosts. Opening a link takes you to the destination site's own content and policies. Card content always comes from the sources in "Where the words come from"; these links are extra entry points.
 
@@ -89,7 +102,11 @@ npx --no-install playwright-core install chromium
 npm run test:browser
 npm run test:browser:locales
 npm run test:browser:ui
+npm run test:browser:navigation
+npm run test:browser:multilingual
 ```
+
+For optional real-service verification, run `npm run test:browser:multilingual:live`. It queries five sample words through the installed extension and is kept out of default CI because network and corpus availability can change.
 
 On Linux, install Chromium with `install --with-deps chromium`. Tests use fixed samples unless you set `LEXILOOM_LIVE_TESTS=1`.
 

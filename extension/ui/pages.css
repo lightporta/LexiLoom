@@ -5,3 +5,5 @@
 .guidance-option span{overflow-wrap:anywhere}
 .field textarea{width:100%;background:var(--paper);color:var(--ink);border:1px solid #d9ded3;border-radius:8px;padding:12px;font:inherit;line-height:1.7;resize:vertical}
 @media(max-width:760px){.settings-shell{padding:24px 16px}.demo-shell{padding:24px}.demo-hero{margin-top:40px}.demo-hero h1{font-size:36px}.demo-content{grid-template-columns:1fr;gap:25px}.steps{display:grid;grid-template-columns:1fr 1fr;gap:15px}.reading p{font-size:20px}.demo-header .pill{display:none}.settings-shell header .brand-name span{display:none}.settings-card{padding:20px}.demo-footer{line-height:1.8;gap:20px}}
+/* Keep the action popup within Chrome's compact popup height. */
+.popup{padding:18px 22px}.popup h1{margin:18px 0 5px;font-size:21px}.popup>p{margin-bottom:12px}.popup .divider{margin:14px 0}.popup .field{margin:10px 0}.popup .field>span{margin-bottom:6px}.popup .field select{padding:9px 12px}.popup .field small{font-size:10px;line-height:1.5}.popup .primary,.popup .secondary{padding:9px 14px;margin-top:7px}.popup .status{min-height:18px;line-height:1.5;margin-top:10px;font-size:11px}.popup footer{margin-top:14px}

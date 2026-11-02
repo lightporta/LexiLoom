@@ -2,6 +2,29 @@
 
 [中文](CHANGELOG.md)
 
+## 0.6.1 · 2026-11-02
+
+- Fixed the duplicated brand in the English reading room (“LexiLoom LexiLoom”): the reading-page brand node now carries the `brand-cn` class that the existing English removal logic targets.
+- Foreign-language word cards in the English interface now label readings in English (e.g. German · IPA / romanization) instead of mixing in Chinese language names; Chinese interfaces are unchanged.
+- English copy now matches 0.6 behaviour: the extension description, settings lead/footer and card guide no longer claim the English interface shows only English definitions or no Chinese glosses.
+- Multilingual examples only show a citation when the source supplies a ref; the source URL is no longer reused as a citation. The dictionary-navigation headword input is capped at 64 characters.
+- Added `data-i18n-placeholder` support (the custom-template placeholder is translatable), removed unused language-group message keys, and extended the `check` dynamic message-key coverage.
+- New regression coverage: English reading-room brand appears once, a real “settings → navigation page” assertion, English reading labels, overlong-headword rejection in navigation. Node regression 138 tests; multilingual card QA 50 checks.
+- Version 0.6.0 → 0.6.1; completed the remote CI record for 0.5.0/0.6.0 (commit `843c972`, run 41450539647 succeeded on all three platforms including the cross-platform ZIP byte comparison).
+## 0.6.0 · 2026-11-02
+
+- Added Japanese, Korean, French, German and Spanish webpage cards with Chinese Wiktionary definitions in Simplified Chinese, source-language readings and up to two examples. They share double-click, selection, append, expand and close interactions.
+- The popup and settings now select a word language. Automatic mode retains Chinese/English behavior; explicit targets distinguish Japanese Han text and preserve German capitals and Latin accents without replacing existing source preferences.
+- A lookup uses one settings snapshot. Language changes refresh open cards, remove old reading/example controls and reject stale results. These cards keep Simplified Chinese definitions in an English interface too.
+- Missing Chinese coverage, readings, confirmed absence and service failures remain distinct. Added real Chromium fixtures plus a separate optional live-service check.
+
+## 0.5.0 · 2026-11-02
+
+- Added dictionary navigation from the popup, settings and cards, with the full matching directory. Its 23 entries include Japanese, Korean, French, German and Spanish website links; these languages do not yet supply webpage card definitions.
+- Custom templates can target a language while retaining the old format. Headwords cannot change the destination host. Length, control-character and row-count errors reject a save without silent truncation or data loss.
+- Fixed the missing initial English-source setting that prevented the first source change from refreshing an open card. Reads and broadcasts share a public shape. Settings save only changed fields and cannot save after a read failure.
+- Added real Chromium navigation, language filtering, concurrent settings and recovery checks, and fixed a media-emulation cleanup race when test pages close.
+
 ## 0.4.0 · 2026-11-01
 
 - Added the dictionary link directory (layer 1, link-only). An expanded card lists up to three external dictionary links chosen by interface language, dictionary region and headword language. Chinese headwords cover Chinese Wiktionary, Han Dian, Moedict, Words.hk, Youdao and Baidu Hanyu; English headwords cover Wiktionary, Oxford Learner's Dictionaries, Cambridge, Merriam-Webster, Youdao, Bing Dictionary and Cambridge English–Chinese. The version moves from 0.3.1 to 0.4.0.

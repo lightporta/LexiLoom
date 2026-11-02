@@ -3,7 +3,7 @@
     "message": "LexiLoom"
   },
   "extDescription": {
-    "message": "Double-click a word for an English definition, pronunciation, and example sentences. Connected cards open on their own."
+    "message": "Double-click words in seven languages. Choose the word language in the popup; added languages show Simplified Chinese definitions."
   },
   "extActionTitle": {
     "message": "LexiLoom"
@@ -15,7 +15,7 @@
     "message": "Let curiosity unfold."
   },
   "popupLead": {
-    "message": "Double-click an English or Chinese word to look it up."
+    "message": "Choose a word language, then double-click a word on a webpage."
   },
   "popupEnable": {
     "message": "Look up words on web pages"
@@ -75,10 +75,10 @@
     "message": "A dictionary, your way"
   },
   "optionsHeading": {
-    "message": "An English entry, in place."
+    "message": "Choose your dictionary."
   },
   "optionsLead": {
-    "message": "This browser language shows the English definition, pronunciation, and example sentences. Chinese glosses stay on the Chinese interface."
+    "message": "Set your lookup sources and word language. Japanese, Korean, French, German and Spanish cards show Simplified Chinese definitions; Chinese and English keep their own sources."
   },
   "optionsSectionLookup": {
     "message": "Lookup on pages"
@@ -156,10 +156,10 @@
     "message": "Start with one word"
   },
   "guide1": {
-    "message": "Double-click an English or Chinese word, or select words and click Look up."
+    "message": "Choose the word language, then double-click a word. You can also drag-select Chinese or multiple words and use the lookup button."
   },
   "guide2": {
-    "message": "Click the card to open the English definition, pronunciation, and examples. Click the headword again to close it."
+    "message": "Click the card to open its definition, pronunciation, and examples. Click the headword again to close it."
   },
   "guide3": {
     "message": "Drag across several words, then click Look up to make a connected row of cards."
@@ -171,7 +171,7 @@
     "message": "Click close or press Esc. Chrome internal pages, the store, and the built-in PDF viewer are not injected."
   },
   "settingsFooter": {
-    "message": "Only a word you choose to look up is sent. Page contents are not uploaded and lookup history is not stored. The English interface requests English dictionary data and does not show Chinese glosses."
+    "message": "Only a word you choose to look up is sent. Page contents are not uploaded and lookup history is not stored. Automatic mode keeps the English and Chinese sources; word cards for the added languages show Simplified Chinese definitions."
   },
   "readFailed": {
     "message": "Could not read settings. Refresh and try again."
@@ -435,7 +435,7 @@
     "message": "Could not reach the local dictionary service. Make sure it is running."
   },
   "error_invalid_word": {
-    "message": "English words support up to 48 characters; Chinese words up to 32 characters."
+    "message": "Select a supported word in the chosen language: up to 32 characters for Chinese/Japanese/Korean, or 48 for other supported languages."
   },
   "error_unsupported_format": {
     "message": "The dictionary returned a format that is not supported yet. Open the original dictionary."
@@ -585,24 +585,105 @@
     "message": "Pick credited dictionary links by headword language and region. The extension only creates links; it never fetches or rehosts those pages."
   },
   "guidanceBuiltinHelp": {
-    "message": "Matched by language and region. Enabled sites appear at the bottom of a card, at most three at a time."
-  },
-  "guidanceGroupEn": {
-    "message": "English headwords"
-  },
-  "guidanceGroupZh": {
-    "message": "Chinese headwords"
+    "message": "Cards show the first three matching links by language and region. Dictionary navigation shows every match."
   },
   "guidanceCustomLabel": {
     "message": "Custom link templates"
   },
   "guidanceCustomHelp": {
-    "message": "One per line: name | https://example.com/word/{word}. HTTPS and the {word} placeholder are required; up to six."
+    "message": "Use name | https://example.com/word/{word} for all languages, or fr | name | https://…/{word} for a specific language (en, zh, ja, ko, fr, de, es). Up to six templates; names up to 60 characters and URLs up to 300. Put {word} in the path, query or fragment."
   },
   "guidanceCustomPlaceholder": {
     "message": "My dictionary | https://example.com/word/{word}"
   },
   "guidanceInvalid": {
-    "message": "Invalid custom template on line $1: $2."
+    "message": "Invalid template on line $1: $2. Check its language, length, URL and the six-template limit."
+  },
+  "navTitle": {
+    "message": "Dictionary navigation"
+  },
+  "navIntro": {
+    "message": "Choose a headword language to read more at the source. Japanese, Korean, French, German and Spanish also have Simplified Chinese word cards: choose the word language in the popup, then double-click on a webpage."
+  },
+  "navWord": {
+    "message": "Headword"
+  },
+  "navLanguage": {
+    "message": "Headword language"
+  },
+  "navRegion": {
+    "message": "Chinese dictionary region"
+  },
+  "navSearch": {
+    "message": "Find dictionaries"
+  },
+  "navEmpty": {
+    "message": "Enter a headword to begin."
+  },
+  "navInvalidWord": {
+    "message": "Enter a headword of up to 64 characters without control characters."
+  },
+  "navNoSites": {
+    "message": "No enabled sites match this language. Enable a dictionary or add a template for this language in settings."
+  },
+  "navResults": {
+    "message": "$1 · $2 · $3 dictionary links"
+  },
+  "navSettings": {
+    "message": "Manage dictionaries and templates"
+  },
+  "navLanguageEn": {
+    "message": "English"
+  },
+  "navLanguageZh": {
+    "message": "Chinese"
+  },
+  "navLanguageJa": {
+    "message": "Japanese"
+  },
+  "navLanguageKo": {
+    "message": "Korean"
+  },
+  "navLanguageFr": {
+    "message": "French"
+  },
+  "navLanguageDe": {
+    "message": "German"
+  },
+  "navLanguageEs": {
+    "message": "Spanish"
+  },
+  "navAllSites": {
+    "message": "The full matching directory. A site is visited only when you open its link."
+  },
+  "navOpen": {
+    "message": "Open in $1 ↗"
+  },
+  "navInvalidLanguage": {
+    "message": "Choose a supported headword language. This language code is not in the directory yet."
+  },
+  "targetLanguageLabel": {
+    "message": "Word language"
+  },
+  "targetLanguageAuto": {
+    "message": "Automatic · Chinese and English"
+  },
+  "targetLanguageHelp": {
+    "message": "Choose a language explicitly. Foreign-word cards show Simplified Chinese."
+  },
+  "providerMultilingual": {
+    "message": "Chinese Wiktionary · WiktApi"
+  },
+  "noteMultilingual": {
+    "message": "This language uses Chinese Wiktionary with Simplified Chinese definitions. Headwords and source-language examples stay unchanged. Missing readings, translations or examples are identified. Source and region choices below are retained for automatic Chinese/English mode."
+  },
+  "source_wiktionary_multilingual": {
+    "message": "Chinese Wiktionary · WiktApi"
+  },
+  "noticeMultilingualReadingMissing": {
+    "message": "The source provides no reading for this entry. System speech is available."
+  },
+  "error_translation_unavailable": {
+    "message": "The source has no Chinese definition for this entry. Open its dictionary links for more information."
   }
 }
