@@ -3,7 +3,7 @@
     "message": "LexiLoom"
   },
   "extDescription": {
-    "message": "Double-click a word for an English definition, pronunciation, and example sentences. Connected cards open on their own."
+    "message": "Double-click words in seven languages. Choose the word language in the popup; added languages show Simplified Chinese definitions."
   },
   "extActionTitle": {
     "message": "LexiLoom"
@@ -75,10 +75,10 @@
     "message": "A dictionary, your way"
   },
   "optionsHeading": {
-    "message": "An English entry, in place."
+    "message": "Choose your dictionary."
   },
   "optionsLead": {
-    "message": "This browser language shows the English definition, pronunciation, and example sentences. Chinese glosses stay on the Chinese interface."
+    "message": "Set your lookup sources and word language. Japanese, Korean, French, German and Spanish cards show Simplified Chinese definitions; Chinese and English keep their own sources."
   },
   "optionsSectionLookup": {
     "message": "Lookup on pages"
@@ -159,7 +159,7 @@
     "message": "Choose the word language, then double-click a word. You can also drag-select Chinese or multiple words and use the lookup button."
   },
   "guide2": {
-    "message": "Click the card to open the English definition, pronunciation, and examples. Click the headword again to close it."
+    "message": "Click the card to open its definition, pronunciation, and examples. Click the headword again to close it."
   },
   "guide3": {
     "message": "Drag across several words, then click Look up to make a connected row of cards."
@@ -171,7 +171,7 @@
     "message": "Click close or press Esc. Chrome internal pages, the store, and the built-in PDF viewer are not injected."
   },
   "settingsFooter": {
-    "message": "Only a word you choose to look up is sent. Page contents are not uploaded and lookup history is not stored. The English interface requests English dictionary data and does not show Chinese glosses."
+    "message": "Only a word you choose to look up is sent. Page contents are not uploaded and lookup history is not stored. Automatic mode keeps the English and Chinese sources; word cards for the added languages show Simplified Chinese definitions."
   },
   "readFailed": {
     "message": "Could not read settings. Refresh and try again."
@@ -586,12 +586,6 @@
   },
   "guidanceBuiltinHelp": {
     "message": "Cards show the first three matching links by language and region. Dictionary navigation shows every match."
-  },
-  "guidanceGroupEn": {
-    "message": "English headwords"
-  },
-  "guidanceGroupZh": {
-    "message": "Chinese headwords"
   },
   "guidanceCustomLabel": {
     "message": "Custom link templates"

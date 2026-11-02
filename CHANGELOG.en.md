@@ -2,6 +2,15 @@
 
 [中文](CHANGELOG.md)
 
+## 0.6.1 · 2026-11-02
+
+- Fixed the duplicated brand in the English reading room (“LexiLoom LexiLoom”): the reading-page brand node now carries the `brand-cn` class that the existing English removal logic targets.
+- Foreign-language word cards in the English interface now label readings in English (e.g. German · IPA / romanization) instead of mixing in Chinese language names; Chinese interfaces are unchanged.
+- English copy now matches 0.6 behaviour: the extension description, settings lead/footer and card guide no longer claim the English interface shows only English definitions or no Chinese glosses.
+- Multilingual examples only show a citation when the source supplies a ref; the source URL is no longer reused as a citation. The dictionary-navigation headword input is capped at 64 characters.
+- Added `data-i18n-placeholder` support (the custom-template placeholder is translatable), removed unused language-group message keys, and extended the `check` dynamic message-key coverage.
+- New regression coverage: English reading-room brand appears once, a real “settings → navigation page” assertion, English reading labels, overlong-headword rejection in navigation. Node regression 138 tests; multilingual card QA 50 checks.
+- Version 0.6.0 → 0.6.1; completed the remote CI record for 0.5.0/0.6.0 (commit `843c972`, run 41450539647 succeeded on all three platforms including the cross-platform ZIP byte comparison).
 ## 0.6.0 · 2026-11-02
 
 - Added Japanese, Korean, French, German and Spanish webpage cards with Chinese Wiktionary definitions in Simplified Chinese, source-language readings and up to two examples. They share double-click, selection, append, expand and close interactions.

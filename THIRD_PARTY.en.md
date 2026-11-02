@@ -34,6 +34,10 @@ Definitions, entry sources, and audio from the [Free Dictionary API](https://dic
 
 These modes use an API and dataset your own account is authorized to access. The extension does not ship or embed official dictionary content and does not persistently store query results. There is no evidence yet of a live check with real credentials. The license is the one on the official account and agreement. The English card shows English definitions, pronunciation, and example sentences, and omits Chinese fields.
 
+## Dictionary navigation (external links)
+
+The 23 built-in navigation entries (Wiktionary editions, Moedict, Han Dian, Larousse, Duden, RAE and others) store only a site name and an HTTPS URL template, used to open the external site when clicked. The extension does not fetch or rehost those pages; each destination site's own terms and privacy policy apply to your visit. A navigation entry does not confirm that the site contains the headword.
+
 ## Local demo and tests
 
 The 12 bilingual samples and the test fixtures are original examples from this project. They are not presented as any official dictionary. Live online checks and synthetic-sample tests are recorded separately.

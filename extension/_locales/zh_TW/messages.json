@@ -587,12 +587,6 @@
   "guidanceBuiltinHelp": {
     "message": "詞卡按語言和地區顯示前 3 個入口。詞典導航頁會顯示全部匹配站點。"
   },
-  "guidanceGroupEn": {
-    "message": "英文詞條"
-  },
-  "guidanceGroupZh": {
-    "message": "中文字詞"
-  },
   "guidanceCustomLabel": {
     "message": "自定義鏈接模板"
   },

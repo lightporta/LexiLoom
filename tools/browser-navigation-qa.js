@@ -105,10 +105,21 @@ for (const tag of ['en-US', 'zh-TW']) {
       check('An empty query shows a localized prompt rather than stale links',
         await navigation.locator('#nav-status').textContent() === await navigation.evaluate(() => LexiLoomI18n.t('navEmpty'))
           && await navigation.locator('#nav-sites a').count() === 0);
-      await navigation.locator('#nav-word').fill('a'.repeat(65));
+      const maxLength = await navigation.locator('#nav-word').getAttribute('maxlength');
+      await navigation.locator('#nav-word').fill('a'.repeat(64));
+      const filledLength = (await navigation.locator('#nav-word').inputValue()).length;
+      // The field now caps typing at the same 64 Unicode characters the renderer
+      // and worker validate. Inject an overlong programmatic value (what a stale
+      // hash or script could do) to keep proving it is rejected, not truncated.
+      await navigation.evaluate(() => {
+        const input = document.querySelector('#nav-word');
+        input.value = 'a'.repeat(65);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
       await navigation.locator('#nav-word').press('Enter');
       check('An overlong headword is rejected instead of silently truncated',
-        await navigation.locator('#nav-status').textContent() === await navigation.evaluate(() => LexiLoomI18n.t('navInvalidWord'))
+        maxLength === '64' && filledLength === 64
+          && await navigation.locator('#nav-status').textContent() === await navigation.evaluate(() => LexiLoomI18n.t('navInvalidWord'))
           && await navigation.locator('#nav-sites a').count() === 0);
 
       await hash(navigation, 'word=bonjour&language=pt');
@@ -207,18 +218,23 @@ for (const tag of ['en-US', 'zh-TW']) {
       check('The popup navigation entry opens the usable directory page', opened.url().startsWith(base));
       const optionLink = harness.options.locator('#open-navigation');
       const target = await optionLink.getAttribute('target');
+      let fromSettings;
       if (target === '_blank') {
         const optionPage = harness.context.waitForEvent('page');
         await optionLink.click();
-        const fromOptions = await optionPage;
-        await fromOptions.waitForURL(url => url.pathname === '/navigation.html');
-        await fromOptions.waitForFunction(() => document.documentElement.dataset.navigationReady === 'true');
+        fromSettings = await optionPage;
+        await fromSettings.waitForURL(url => url.pathname === '/navigation.html');
+        await fromSettings.waitForFunction(() => document.documentElement.dataset.navigationReady === 'true');
       } else {
         await optionLink.click();
-        await harness.options.waitForURL(url => url.pathname === '/navigation.html');
-        await harness.options.waitForFunction(() => document.documentElement.dataset.navigationReady === 'true');
+        fromSettings = harness.options;
+        await fromSettings.waitForURL(url => url.pathname === '/navigation.html');
+        await fromSettings.waitForFunction(() => document.documentElement.dataset.navigationReady === 'true');
       }
-      check('The settings navigation entry reaches the directory page', true);
+      check('The settings navigation entry reaches the directory page',
+        await fromSettings.evaluate(() => location.pathname === '/navigation.html'
+          && document.documentElement.dataset.navigationReady === 'true'
+          && document.querySelectorAll('#nav-language option').length > 1));
     } else {
       check('A Traditional Chinese interface defaults to Chinese without guessing other languages', await navigation.locator('#nav-language').inputValue() === 'zh');
       const result = await query(navigation, '學習', 'zh');

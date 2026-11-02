@@ -81,7 +81,8 @@ test('examples are source-language text, deduplicated, limited to two, and never
   const result = normalizeMultilingual('Haus', data, { language: 'de' });
   assert.deepEqual(examplesOf(result).map(example => example.text), ['Das Haus ist groß.', 'Ein Haus steht hier.']);
   assert.equal(examplesOf(result)[0].translation, '这栋房子很大。');
-  assert.equal(examplesOf(result)[0].reference, result.source.url);
+  assert.equal('reference' in examplesOf(result)[0], false, 'a missing citation is not replaced with the source URL');
+  assert.equal(examplesOf(result)[1].reference, 'Original fixture');
 });
 
 test('a Japanese entry cannot label Chinese-only text as a Japanese example', () => {
@@ -102,6 +103,31 @@ test('Korean hangul readings and Japanese native/roman readings retain their exp
   const japanese = normalizeMultilingual('学校', payload('学校', 'ja', { sounds: [{ other: 'がっこー', roman: '[gàkkóó]' }, { ipa: '[ɡa̠k̚ko̞ː]' }] }), { language: 'ja' });
   assert.equal(japanese.pronunciations[0].phonetic, 'がっこー · [gàkkóó]');
   assert.equal(japanese.phonetic, '[ɡa̠k̚ko̞ː]');
+});
+
+test('pronunciation labels follow the interface language without adding catalog keys', async () => {
+  const german = payload('Haus', 'de', { sounds: [{ ipa: '/haʊ̯s/' }, { roman: 'Haus' }] });
+  assert.deepEqual(normalizeMultilingual('Haus', german, { language: 'de' }).pronunciations.map(sound => sound.label),
+    ['德语 · IPA', '德语 · 罗马字']);
+  const english = normalizeMultilingual('Haus', german, { language: 'de', uiLanguage: 'en-US' });
+  assert.deepEqual(english.pronunciations.map(sound => sound.label), ['German · IPA', 'German · romanization']);
+  assert.ok(english.pronunciations.every(sound => !/[\u4e00-\u9fff]/u.test(sound.label)), 'an English interface must not show Chinese-only labels');
+  const korean = normalizeMultilingual('학교', payload('학교', 'ko', { sounds: [{ hangeul: '학꾜' }, { roman: 'hakgyo' }] }), { language: 'ko', uiLanguage: 'en' });
+  assert.deepEqual(korean.pronunciations.map(sound => sound.label), ['Korean · hangul', 'Korean · romanization']);
+  const japanese = normalizeMultilingual('学校', payload('学校', 'ja', { sounds: [{ other: 'がっこー' }, { ipa: '[ɡa̠k̚ko̞ː]' }] }), { language: 'ja', uiLanguage: 'en-US' });
+  assert.deepEqual(japanese.pronunciations.map(sound => sound.label), ['Japanese · kana', 'Japanese · IPA']);
+  for (const [uiLanguage, name] of [['zh-TW', '日语'], ['zh-CN', '日语']]) {
+    const label = normalizeMultilingual('学校', payload('学校', 'ja', { sounds: [{ ipa: '[ɡa̠k̚ko̞ː]' }] }), { language: 'ja', uiLanguage }).pronunciations[0].label;
+    assert.equal(label, `${name} · IPA`);
+  }
+  const french = normalizeMultilingual('bonjour', payload('bonjour', 'fr', { sounds: [{ ipa: '/bɔ̃ʒuʁ/' }] }), { language: 'fr', uiLanguage: 'fr-FR' });
+  assert.equal(french.pronunciations[0].label, '法语 · IPA');
+  const calls = [];
+  const looked = await lookupMultilingual('Haus', { language: 'de', uiLanguage: 'en-US', fetchImpl: async url => {
+    calls.push(String(url)); return Response.json(payload('Haus', 'de', { sounds: [{ ipa: '/haʊ̯s/' }] }));
+  } });
+  assert.equal(calls.length, 1);
+  assert.equal(looked.pronunciations[0].label, 'German · IPA');
 });
 
 test('audio requires HTTPS and attribution, with separate license metadata retained', () => {

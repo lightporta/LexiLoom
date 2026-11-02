@@ -60,6 +60,10 @@
       const label = t(node.dataset.i18nTitle);
       if (label) node.title = label;
     }
+    for (const node of scope.querySelectorAll('[data-i18n-placeholder]')) {
+      const label = t(node.dataset.i18nPlaceholder);
+      if (label) node.placeholder = label;
+    }
   }
   function ownExtensionPage() {
     const runtime = globalThis.chrome?.runtime;

@@ -27,4 +27,4 @@
 
 - 其他语言的网页划词正文需要明确目标语言、对应 adapter、词源许可和真实在线验收；导航目录不等于已经完成这一步。
 - 第三方词库的覆盖和在线状态、Oxford/Cambridge 授权、iframe/PDF/编辑器等既有边界仍在。
-- 当前版本本机验证与远程基线证据分别见 [VALIDATION.md](VALIDATION.md)，新改动的远程 CI 待用户推送。
+- 当前版本本机验证与远程基线证据分别见 [VALIDATION.md](VALIDATION.md)。0.5.0 提交 `8c03278` 与 0.6.0 提交 `843c972` 均已推送：0.5.0 的 [run 41442622503](https://github.com/lightporta/LexiLoom/actions/runs/41442622503) 仅在 macOS 浏览器流程失败，后续 0.6.0 的 [run 41450539647](https://github.com/lightporta/LexiLoom/actions/runs/41450539647) 三平台与跨平台 ZIP 比较全部成功。

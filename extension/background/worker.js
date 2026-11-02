@@ -54,7 +54,7 @@ const dictionaries = createDictionaryEngine({
     wiktionary: (word, { fetchImpl }) => lookupWiktionary(word, { fetchImpl }),
     free: (word, { fetchImpl }) => lookupFree(word, { fetchImpl }),
     chinese: (word, { region, uiLanguage, fetchImpl }) => lookupChinese(word, { region, uiLanguage, fetchImpl }),
-    multilingual: (word, { language, fetchImpl }) => lookupMultilingual(word, { language, fetchImpl }),
+    multilingual: (word, { language, uiLanguage, fetchImpl }) => lookupMultilingual(word, { language, uiLanguage, fetchImpl }),
     oxford: lookupOfficial, cambridge: lookupOfficial
   },
   localize: (entry, context) => context.profile.localizeForUi?.(context.ui)

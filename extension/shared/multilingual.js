@@ -16,6 +16,8 @@ const han = /\p{Script=Han}/u;
 const list = value => Array.isArray(value) ? value : [];
 const text = (value, maximum = 1800) => typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, maximum) : '';
 const distinct = values => [...new Set(values.filter(Boolean))];
+const ENGLISH_NAMES = Object.freeze({ ja: 'Japanese', ko: 'Korean', fr: 'French', de: 'German', es: 'Spanish' });
+const englishUi = value => typeof value === 'string' && value.trim().toLowerCase().startsWith('en');
 const chineseText = value => {
   const clean = text(value);
   return han.test(clean) ? convertChineseText(clean, 'CN') : '';
@@ -77,8 +79,9 @@ function audioAttribution(sound) {
     ? `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(filename)}` : '';
 }
 
-function pronunciationsFor(entry, language, sourceUrl) {
+function pronunciationsFor(entry, language, sourceUrl, uiLanguage) {
   const profile = languages[language];
+  const english = englishUi(uiLanguage);
   const output = [];
   for (const sound of list(entry.sounds).slice(0, 16)) {
     if (!sound || typeof sound !== 'object') continue;
@@ -94,7 +97,10 @@ function pronunciationsFor(entry, language, sourceUrl) {
     const audio = attributionUrl ? safeHttps(sound.mp3_url) || safeHttps(sound.ogg_url) || safeHttps(sound.wav_url) : '';
     if (!phonetic && !audio) continue;
     const tags = distinct([...list(sound.tags), ...list(sound.raw_tags)].map(value => text(value, 80))).join(' · ');
-    const label = [profile.name, ipa ? 'IPA' : native ? language === 'ja' ? '假名' : '谚文' : roman ? '罗马字' : '', tags ? convertChineseText(tags, 'CN') : ''].filter(Boolean).join(' · ');
+    const reading = ipa ? 'IPA'
+      : native ? language === 'ja' ? english ? 'kana' : '假名' : english ? 'hangul' : '谚文'
+        : roman ? english ? 'romanization' : '罗马字' : '';
+    const label = [english ? ENGLISH_NAMES[language] : profile.name, reading, tags ? convertChineseText(tags, 'CN') : ''].filter(Boolean).join(' · ');
     const pronunciation = { label, phonetic, audio, locale: profile.locale, sourceUrl };
     if (audio) {
       pronunciation.attributionUrl = attributionUrl;
@@ -106,7 +112,7 @@ function pronunciationsFor(entry, language, sourceUrl) {
   return output;
 }
 
-function originalExample(example, language, sourceUrl) {
+function originalExample(example, language) {
   const value = text(example?.text);
   if (!value || /lyrics|作詞|作词/i.test(text(example?.ref, 600))) return null;
   // Some extracted Chinese-edition examples put a Chinese sentence in `text`
@@ -117,15 +123,16 @@ function originalExample(example, language, sourceUrl) {
     : language === 'ko' ? /\p{Script=Hangul}/u : /\p{Script=Latin}/u;
   if (!expectedScript.test(value)) return null;
   const translation = chineseText(example.translation);
+  const reference = text(example.ref, 600);
   return {
     text: value,
     ...(translation ? { translation } : {}),
-    reference: text(example.ref, 600) || sourceUrl,
+    ...(reference ? { reference } : {}),
     ...(text(example.roman, 300) ? { roman: text(example.roman, 300) } : {})
   };
 }
 
-export function normalizeMultilingual(word, payload, { language } = {}) {
+export function normalizeMultilingual(word, payload, { language, uiLanguage = 'zh-CN' } = {}) {
   if (!validMultilingualWord(word, language)) return failure('', language || '', 'invalid-word', '请选择当前目标语言支持的单词。');
   const mismatch = !payload || payload.edition !== 'zh' || payload.word !== word || !Array.isArray(payload.entries);
   if (mismatch) return failure(word, language, 'unsupported-format', '词源返回的词头、版本或格式不符合本次查询。');
@@ -149,7 +156,7 @@ export function normalizeMultilingual(word, payload, { language } = {}) {
       const examples = [];
       for (const raw of list(sense?.examples).slice(0, 12)) {
         if (examplesUsed >= 2) break;
-        const example = originalExample(raw, language, output.source.url);
+        const example = originalExample(raw, language);
         if (!example || seenExamples.has(example.text)) continue;
         examples.push(example); seenExamples.add(example.text); examplesUsed++;
       }
@@ -160,7 +167,7 @@ export function normalizeMultilingual(word, payload, { language } = {}) {
     }
     if (definitions.length) {
       output.meanings.push({ language: 'zh', origin: 'wiktionary-zh', partOfSpeech: text(entry.pos, 60), definitions, synonyms: [] });
-      output.pronunciations.push(...pronunciationsFor(entry, language, output.source.url));
+      output.pronunciations.push(...pronunciationsFor(entry, language, output.source.url, uiLanguage));
     }
   }
   if (payload.entries.length && (!accepted || !schema)) return failure(word, language, 'unsupported-format', '词源返回的数据不属于当前语言或格式暂不支持。');
@@ -174,7 +181,7 @@ export function normalizeMultilingual(word, payload, { language } = {}) {
   return output;
 }
 
-export async function lookupMultilingual(word, { language, fetchImpl = fetch, timeoutMs = 10_000 } = {}) {
+export async function lookupMultilingual(word, { language, uiLanguage = 'zh-CN', fetchImpl = fetch, timeoutMs = 10_000 } = {}) {
   if (!validMultilingualWord(word, language)) return failure('', language || '', 'invalid-word', '请选择当前目标语言支持的单词。');
   try {
     const response = await fetchImpl(`https://api.wiktapi.dev/v1/zh/word/${encodeURIComponent(word)}?lang=${language}`, {
@@ -189,7 +196,7 @@ export async function lookupMultilingual(word, { language, fetchImpl = fetch, ti
     if (response.status === 401 || response.status === 403) return failure(word, language, 'authentication', '词源访问被拒绝，请稍后重试。');
     if (response.status === 429) return failure(word, language, 'rate-limit', '词源请求过于频繁，请稍后重试。');
     if (!response.ok) return failure(word, language, 'upstream', '词源暂不可用，请稍后重试。');
-    return normalizeMultilingual(word, await readJsonLimited(response), { language });
+    return normalizeMultilingual(word, await readJsonLimited(response), { language, uiLanguage });
   } catch (error) {
     if (error?.name === 'SyntaxError' || error?.code === 'response-too-large') {
       return failure(word, language, 'unsupported-format', '词源返回的内容格式或大小不符合要求，请打开原词典查看。');

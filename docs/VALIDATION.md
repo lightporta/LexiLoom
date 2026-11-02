@@ -1,12 +1,49 @@
 # 验收记录
 
-## 0.6.0 · 2026-11-02
+## 0.6.1 · 2026-11-02
 
-基于 `8c03278`，把日、韩、法、德、西语从词典导航扩展到网页词卡，首版统一提供简体中文释义。界面语言、词头语言和释义语言分开：即便英文或繁体界面，五语词卡的中文释义仍转为简体；原词、原语例句及大小写不转写。
+在 `843c972`（0.6.0）之后做审计补齐：只修用户可见缺陷与记录/测试缺口，不改变 0.5/0.6 的功能范围。0.5.0（`8c03278`）与 0.6.0（`843c972`）此前已在分支上推送，0.6.0 的远程三平台 CI 为 run [41450539647](https://github.com/lightporta/LexiLoom/actions/runs/41450539647)（macOS/Windows/Ubuntu 全绿，含跨平台 ZIP 字节比较）；0.5.0 的 `8c03278` 当次 run 41442622503 仅 macOS 浏览器检查失败，已由 0.6.0 的修复与绿色 run 取代（详见 0.5.0/0.6.0 节）。
 
 ### 本机检查
 
-环境：macOS、Node.js **22.23.4**、Chrome for Testing **156.0.8078.4**。
+环境：macOS、Node.js **24.16.0**（本轮实际运行环境）、Chrome for Testing **156.0.8078.4**。CI 使用 Node 22.x（workflow 未固定补丁号）。
+
+| 检查 | 结果 | 覆盖 |
+| --- | --- | --- |
+| `npm test` | **138 项通过** | 原 136 + i18n `apply()` 占位符测试 + 多语读音标签本地化测试 |
+| `npm run check` | **通过（38 个扩展文件）** | 语法、Manifest V3、资源引用、目录键/占位符一致、版本 0.6.1、CSP、权限 |
+| `npm run test:browser` | **34 项通过** | 既有中英文查词、展开、追加、关闭、设置、布局与导向 |
+| `npm run test:browser:locales` | **4 组通过** | zh-CN、zh-HK、zh-TW、en-US |
+| `npm run test:browser:ui` | **13 项通过** | 来源刷新、跨窗口保存、署名与朗读地区 |
+| `npm run test:browser:navigation` | **36 项通过** | 完整目录、语言范围、模板、失败恢复、入口与窄屏 |
+| `npm run test:browser:multilingual` | **50 项通过** | 五语简中正文、原语朗读、许可、迟到回复、语言切换、英文界面读音标签 |
+| `npm run package` | **双 ZIP 通过** | `dist/LexiLoom-0.6.1-chrome.zip`（38 文件，1,498,716 B）与 `dist/LexiLoom-0.6.1-store.zip`（1,498,032 B） |
+
+### 本轮修复（对应审计）
+
+- **英文阅读体验页品牌重复**：`extension/try.html` 品牌节点补上 `brand-cn` 类名，英文界面按既有逻辑移除中文副品牌，不再显示 “LexiLoom LexiLoom”；并增加阅读室品牌唯一性回归。
+- **英文界面新增语种读音标签**：英文界面的日/韩/法/德/西词卡读音标签改为英文（如 German · IPA / romanization），不再混入中文语种名；中文界面不变。
+- **英文文案与 0.6 行为对齐**：扩展描述、设置页引导与页脚、词卡指引不再声称英文界面只显示英文释义或不显示中文释义。
+- **多语例句引用**：词源未提供 `ref` 时不再用来源 URL 充当引用；保留真实引用。
+- **词典导航词头上限**：`maxlength` 统一为 64，与页面校验和 worker 校验一致；导航超长词回归同时覆盖“输入截断后仍拒绝程序化超长值”。
+- **i18n 基建**：补齐 `data-i18n-placeholder` 支持；删除未使用的 `guidanceGroupEn/Zh` 键；`tools/check.js` 的 data-i18n 正则与动态键清单补上新键。
+- **测试质量**：删除一个条件恒为 `true` 的“设置 → 导航页”断言，改为对目标页面 pathname / navigationReady / 语言选项的真实断言。
+- **文档**：补全 0.5.0/0.6.0 的远程 CI 记录与提交号；修正 Node 版本表述（本机默认 24.16.0、部分历史证据为 npx 临时 22.23.4、CI 为 Node 22.x）；README.en 同步五语词卡内容并修正 48/32 字符上限说法；THIRD_PARTY 补充词典导航外链说明；popup 高度标注为人工观察。
+
+### 证据与限制
+
+- [browser-validation.json](browser-validation.json) 为 0.6.1 报告（version 字段 0.6.1，node v24.16.0）；其余报告与截图在 `test-results/browser-{ui,locales,navigation,multilingual}/`，不纳入版本控制，CI 会上传。
+- 默认浏览器检查使用合成词条与受控 `chrome.i18n.getUILanguage()` 输入，不代表词典覆盖或实际切换操作系统语言；不使用真实在线词源。
+- 真实在线多语抽查（[online-multilingual-validation.json](online-multilingual-validation.json)、[browser-multilingual-live.json](browser-multilingual-live.json)）为一次性人工抽查记录，不随默认 CI 重跑；复验命令见 0.6.0 节。
+- 本机验证完成于 2026-11-02；0.6.1 的远程三平台结果以推送后的 Actions 与 PR 记录为准（本记录在合并前写定）。
+
+## 0.6.0 · 2026-11-02
+
+基于 `8c03278` 开发，0.6.0 提交为 `843c972`。把日、韩、法、德、西语从词典导航扩展到网页词卡，首版统一提供简体中文释义。界面语言、词头语言和释义语言分开：即便英文或繁体界面，五语词卡的中文释义仍转为简体；原词、原语例句及大小写不转写。
+
+### 本机检查
+
+环境：macOS、Chrome for Testing **156.0.8078.4**。本机默认 Node.js 为 **24.16.0**；部分浏览器证据由 npx 临时取得的 Node.js **22.23.4** 生成，在线 API 抽样使用默认 Node.js 24.16.0（以 `docs/*.json` 的 `node` 字段为准）。CI 使用 Node 22.x，workflow 固定为浮动的 `node-version: '22'`，不固定补丁号。
 
 | 检查 | 结果 | 覆盖 |
 | --- | --- | --- |
@@ -18,7 +55,7 @@
 | 多语言词卡回归 | 48 项通过 | 五语简中正文、原语朗读、两条例句、许可、多卡、迟到回复、旧内容清理、切回自动、大小写去重、弹窗与体验页 |
 | 静态检查与双 ZIP | 通过 | 38 个扩展文件、版本/CSP/资源引用；主机权限保持原范围 |
 
-默认浏览器检查使用自编合成词条及受控 `chrome.i18n.getUILanguage()` 输入；它们验证真实 Chromium 中的扩展流程，不代表词典覆盖或实际切换操作系统语言。新报告和截图位于 `test-results/browser-multilingual/`，CI 已新增上传。中英文 popup 在 338×600 视口中完整可见，中文约 522px、英文外语模式约 572px。
+默认浏览器检查使用自编合成词条及受控 `chrome.i18n.getUILanguage()` 输入；它们验证真实 Chromium 中的扩展流程，不代表词典覆盖或实际切换操作系统语言。新报告和截图位于 `test-results/browser-multilingual/`，CI 已新增上传。人工观察到中英文 popup 在 338×600 视口中完整可见，中文约 522px、英文外语模式约 572px；这两个高度是人工测量值，浏览器回归只断言视口内完整可见（`bodyHeight ≤ 600`），未写入报告。
 
 最终包为 `dist/LexiLoom-0.6.0-chrome.zip`（1,498,299 字节）与 `dist/LexiLoom-0.6.0-store.zip`（1,497,615 字节），Windows、Linux、macOS 共用；本轮实际运行环境为上述 macOS。
 
@@ -45,7 +82,7 @@
 
 此版是五语单词词卡的第一步，不是通用句子翻译；覆盖受中文维基词典限制。日、韩每词最多 32 字符（韩语当前以 Hangul 为输入范围），法、德、西每词最多 48 字符；原有中英文默认行为保留。词形、读音和例句可后续按语种逐项补充。Oxford/Cambridge 的真实授权凭据联调边界不变。
 
-本次只完成本地提交与打包；**0.6.0 的远程三平台 CI 与跨系统 ZIP 字节比较待用户推送后确认**。本机成功和真实在线样本不等于远程三平台验收。
+0.6.0 提交 `843c972` 已推送。远程 [run 41450539647](https://github.com/lightporta/LexiLoom/actions/runs/41450539647) 在 macOS、Windows、Ubuntu 三平台全部成功，包含导航与多语言词卡的 Chromium QA 步骤，以及“Compare universal ZIP bytes”跨平台字节比较。本机成功和真实在线样本仍不等于远程三平台验收。
 
 ## 0.5.0 · 2026-11-02
 
@@ -53,7 +90,7 @@
 
 ### 本机验证
 
-macOS、Node.js **22.23.4**、Chrome for Testing **156.0.8078.4**；以下均在本轮集成后实际运行。
+macOS、Chrome for Testing **156.0.8078.4**；本机默认 Node.js 为 **24.16.0**，部分证据由 npx 临时取得的 Node.js **22.23.4** 生成（见 `docs/*.json` 的 `node` 字段）；CI 使用 Node 22.x，workflow 固定为浮动的 `node-version: '22'`。以下均在本轮集成后实际运行。
 
 | 检查 | 结果 | 重点 |
 | --- | --- | --- |
@@ -75,7 +112,9 @@ macOS、Node.js **22.23.4**、Chrome for Testing **156.0.8078.4**；以下均在
 
 ### 远程状态
 
-用户基线 `dc7df92` 的 [run 41316962322](https://github.com/lightporta/LexiLoom/actions/runs/41316962322) 已成功；远程 main 的合并提交 `723431d` 对应 [run 41317240518](https://github.com/lightporta/LexiLoom/actions/runs/41317240518) 也成功。本轮 **0.5.0 尚未推送，远程三平台与跨平台 ZIP 字节比较待用户推送后确认**，以上远程结果只属于基线。
+用户基线 `dc7df92` 的 [run 41316962322](https://github.com/lightporta/LexiLoom/actions/runs/41316962322) 已成功；远程 main 的合并提交 `723431d` 对应 [run 41317240518](https://github.com/lightporta/LexiLoom/actions/runs/41317240518) 也成功，这两条只属于基线。
+
+0.5.0 提交 `8c03278` 已推送：[run 41442622503](https://github.com/lightporta/LexiLoom/actions/runs/41442622503) 仅在 macOS 的“Run actual Chromium extension checks”步骤失败，Ubuntu、Windows 成功，跨平台 ZIP 字节比较因此跳过。后续 0.6.0 提交 `843c972` 修正了测试清理相关代码，其 [run 41450539647](https://github.com/lightporta/LexiLoom/actions/runs/41450539647) 在三平台与跨平台 ZIP 比较全部成功；该版本远程状态见下一节。
 
 ## 0.4.0 · 2026-11-01
 
@@ -112,8 +151,8 @@ macOS、Node.js **22.23.4**、Chrome for Testing **156.0.8078.4**；以下均在
 
 - 导向库 URL 只做结构校验和少量 `curl` 抽查；抽查中部分站点对脚本请求返回 403/520（反爬），**未逐一在真实浏览器打开所有内置链接**。站点改版时应只改 `extension/shared/guidance.js` 一处。
 - 没有真实 Oxford/Cambridge 授权凭据联调；fixture 通过不代表官方 API 已连接。
-- 远程三平台 CI 已随分支推送触发，最终结果以 GitHub Actions 为准；本地 macOS 的 Node 检查、真实 Chromium 检查与本机构建均通过。
-- 远程 `origin/main` 已通过 PR #1 合并 macOS CI 加固（`c00f2a2`，run 41309664616 成功）；本轮功能分支基于 `a03a66c`，已推送 `origin/feat/guidance-directory`，是否合并由用户决定。
+- 远程三平台 CI 已随分支推送触发，最终结果以 GitHub Actions 为准；本地 macOS 的 Node 检查、真实 Chromium 检查与本机构建均通过。`b95f29b` 的推送 [run 41316500744](https://github.com/lightporta/LexiLoom/actions/runs/41316500744) 因连续推送竞态被取消；最终提交 `dc7df92` 的 [run 41316611125](https://github.com/lightporta/LexiLoom/actions/runs/41316611125) 与 PR 触发的 [run 41316962322](https://github.com/lightporta/LexiLoom/actions/runs/41316962322) 三平台均成功。
+- 远程 `origin/main` 已通过 PR #1 合并 macOS CI 加固（`c00f2a2`，run 41309664616 成功）。PR #2 已把 `feat/guidance-directory`（`dc7df92`，包含功能提交 `b95f29b`）合并进 main，合并提交为 `723431d`，对应 [run 41317240518](https://github.com/lightporta/LexiLoom/actions/runs/41317240518) 成功；0.4.0 已进入 main。
 
 ## 0.3.1 验收记录
 
@@ -121,7 +160,7 @@ macOS、Node.js **22.23.4**、Chrome for Testing **156.0.8078.4**；以下均在
 
 ## 本地检查
 
-环境为 macOS、Chrome for Testing 156.0.8078.4。阶段 A 原验收使用 Node.js 24.16.0；本次 CI 修复在与 CI 相同的 Node.js 22.23.4 下重跑了下表全部检查，主浏览器报告记录该版本。
+环境为 macOS、Chrome for Testing 156.0.8078.4。阶段 A 原验收使用 Node.js 24.16.0；本次 CI 修复在与 CI 主版本相同的 Node.js 22.x 下重跑了下表全部检查（当时记录的具体版本为 22.23.4，CI workflow 未固定补丁号），主浏览器报告记录该版本。
 
 | 命令或检查 | 结果 | 覆盖范围 |
 | --- | --- | --- |

@@ -1,7 +1,7 @@
 {
-  "version": "0.6.0",
+  "version": "0.6.1",
   "platform": "darwin",
-  "node": "v22.23.4",
+  "node": "v24.16.0",
   "browser": "156.0.8078.4",
   "checks": [
     "service worker UI language is isolated as zh-CN",

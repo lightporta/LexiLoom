@@ -130,6 +130,7 @@ for (const tag of ['zh-CN', 'en-US']) {
         guidance:[...this.querySelectorAll('.guidance-link')].map(node=>node.href)
       }`);
       check(`${tag} ${language} pronunciation uses the source language speech locale`, details.pronunciation.length > 0 && details.pronunciation.every(sound => sound.lang === data.locale) && details.pronunciation.some(sound => sound.text.includes(data.phonetic)));
+      if (tag === 'en-US') check('English interface labels foreign readings in English instead of Chinese', details.pronunciation.some(sound => /German|French|Spanish|Japanese|Korean|IPA/.test(sound.text)) && details.pronunciation.every(sound => !/德语|法语|日语|韩语|西班牙语|谚文|假名|罗马字/.test(sound.text)));
       check(`${tag} ${language} card keeps at most two actual examples with Chinese translations`, details.examples.length === 2 && details.examples.every(text => text.includes('这是一句原创例句。')) && details.examples.every(text => !text.includes(data.examples[2])));
       check(`${tag} ${language} card retains text licensing, example attribution and language-specific guidance`, details.licenses.some(href => href.includes('creativecommons.org/licenses/by-sa/')) && details.references.some(text => text.includes('synthetic multilingual fixture')) && details.guidance.some(href => new URL(href).hostname === `${language}.wiktionary.org`));
       if (language === 'ja' || tag === 'en-US') await harness.page.screenshot({ path: join(directory, `${tag}-${language}.png`) });
@@ -222,7 +223,18 @@ for (const tag of ['zh-CN', 'en-US']) {
     }));
     check(`${tag} toolbar popup fits its language controls, status and footer within 600px`,
       layout.bodyHeight <= 600 && layout.footerBottom <= 600 && layout.scrollWidth <= 338);
-    if (tag === 'en-US') check('The English popup renders the brand name only once', layout.brand === 'LexiLoom');
+    if (tag === 'en-US') {
+      check('The English popup renders the brand name only once', layout.brand === 'LexiLoom');
+      const readingRoom = await harness.context.newPage();
+      await readingRoom.goto(`chrome-extension://${harness.extensionId}/try.html`);
+      const roomBrand = await readingRoom.evaluate(() => ({
+        brand: document.querySelector('.brand-name').textContent.trim(),
+        chineseSpan: Boolean(document.querySelector('.brand-cn'))
+      }));
+      check('The English reading room renders the brand name only once',
+        roomBrand.brand === 'LexiLoom' && !roomBrand.chineseSpan);
+      await readingRoom.close();
+    }
     await toolbar.screenshot({ path: join(directory, `popup-${tag}.png`) });
     if (tag === 'zh-CN') {
       const requestCount = await harness.worker.evaluate(() => globalThis.__MULTILINGUAL_QA__.requests.length);

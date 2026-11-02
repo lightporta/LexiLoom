@@ -11,7 +11,13 @@ async function load(language) {
       i18n: { getUILanguage: () => language, getMessage: () => '' },
       runtime: { id: 'a'.repeat(32), sendMessage: async request => {
         requests.push(request);
-        return { messages: { example: { message: '$1 / $2 / $10 / $0' } } };
+        return { messages: {
+          example: { message: '$1 / $2 / $10 / $0' },
+          labelText: { message: 'Label text' },
+          labelAria: { message: 'Aria label' },
+          labelTitle: { message: 'Title text' },
+          labelPlaceholder: { message: 'Placeholder text' }
+        } };
       } }
     },
     document: { readyState: 'loading', addEventListener() {} }
@@ -33,4 +39,35 @@ test('Hong Kong and Taiwan request the packaged Traditional Chinese catalog', as
     assert.equal(requests[0].catalog, 'zh_TW');
   }
   assert.equal((await load('zh-CN')).requests[0].catalog, 'zh_CN');
+});
+
+test('apply translates text, aria labels, titles, placeholders and the document language', async () => {
+  const { i18n } = await load('en-US');
+  const node = (key, field) => {
+    const item = {
+      dataset: {}, textContent: '', placeholder: '', title: '', attributes: {},
+      setAttribute(name, value) { this.attributes[name] = value; }
+    };
+    item.dataset[field] = key;
+    return item;
+  };
+  const text = node('labelText', 'i18n');
+  const aria = node('labelAria', 'i18nAria');
+  const title = node('labelTitle', 'i18nTitle');
+  const placeholder = node('labelPlaceholder', 'i18nPlaceholder');
+  const root = {
+    documentElement: { lang: '' },
+    querySelectorAll(selector) {
+      return {
+        '[data-i18n]': [text], '[data-i18n-aria]': [aria],
+        '[data-i18n-title]': [title], '[data-i18n-placeholder]': [placeholder]
+      }[selector] || [];
+    }
+  };
+  i18n.apply(root);
+  assert.equal(root.documentElement.lang, 'en');
+  assert.equal(text.textContent, 'Label text');
+  assert.equal(aria.attributes['aria-label'], 'Aria label');
+  assert.equal(title.title, 'Title text');
+  assert.equal(placeholder.placeholder, 'Placeholder text');
 });
