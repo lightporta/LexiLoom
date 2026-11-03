@@ -59,10 +59,10 @@ const moe = {
   }]
 };
 
-function absent(kind) {
+function absent(kind, word = '測試') {
   const body = kind === 'moe'
     ? { error: 'Not Found', message: '找不到詞彙。' }
-    : { error: true, status: 404, message: 'No entries found for missing' };
+    : { error: true, status: 404, message: `No entries found for ${JSON.stringify(word)}` };
   return new Response(JSON.stringify(body), { status: 404, headers: { 'content-type': 'application/json' } });
 }
 
@@ -70,11 +70,12 @@ function route(bodies) {
   const calls = [];
   const fetchImpl = async url => {
     const href = String(url);
+    const word = decodeURIComponent(new URL(href).pathname.split('/').at(-1).replace(/\.json$/, ''));
     calls.push(href);
     if (href.includes('moedict.tw')) return bodies.moe ? Response.json(bodies.moe) : absent('moe');
-    if (href.includes('/v1/en/')) return bodies.en ? Response.json(bodies.en) : absent('wiki');
-    if (href.includes('/v1/zh/')) return bodies.zh ? Response.json(bodies.zh) : absent('wiki');
-    return absent('wiki');
+    if (href.includes('/v1/en/')) return bodies.en ? Response.json(bodies.en) : absent('wiki', word);
+    if (href.includes('/v1/zh/')) return bodies.zh ? Response.json(bodies.zh) : absent('wiki', word);
+    return absent('wiki', word);
   };
   return { calls, fetchImpl };
 }
@@ -212,7 +213,7 @@ test('a response for the wrong word, edition or MOE title cannot become the requ
     assert.equal(result.status, 'error'); assert.equal(result.error.code, 'unsupported-format');
   }
   const result = await lookupChinese('學習', { region: 'TW', fetchImpl: async url => String(url).includes('moedict')
-    ? Response.json({ ...moe, title: '錯詞' }) : absent('wiki') });
+    ? Response.json({ ...moe, title: '錯詞' }) : absent('wiki', '學習') });
   assert.equal(result.status, 'error'); assert.equal(result.error.code, 'unsupported-format');
 });
 
@@ -254,4 +255,38 @@ test('Chinese lookup requires confirmed absence from every queried source', asyn
     assert.equal(result.status, 'error');
     assert.equal(JSON.stringify(result).includes('private failure'), false);
   }
+});
+
+test('Chinese WiktApi cannot confirm absence using a different word, edition or language', async () => {
+  for (const metadata of [
+    { message: 'No entries found for "錯詞"' }, { word: '錯詞' }, { edition: 'fr' },
+    { url: 'https://api.wiktapi.dev/v1/zh/word/%E6%B8%AC%E8%A9%A6?lang=ja' }
+  ]) {
+    const result = await lookupChinese('測試', { fetchImpl: async () => Response.json({
+      error: true, status: 404, message: 'No entries found for "測試"', ...metadata
+    }, { status: 404 }) });
+    assert.equal(result.status, 'error'); assert.equal(result.error.code, 'upstream');
+  }
+});
+
+test('Chinese dictionaries report malformed or oversized success bodies as format failures', async () => {
+  for (const fetchImpl of [
+    async () => new Response('<html>gateway</html>'),
+    async () => new Response('{}', { headers: { 'content-length': '1000001' } }),
+    async () => new Response('x'.repeat(1_000_001))
+  ]) {
+    const result = await lookupChinese('測試', { region: 'TW', fetchImpl });
+    assert.equal(result.status, 'error'); assert.equal(result.error.code, 'unsupported-format');
+  }
+});
+
+test('a usable Chinese card with a temporarily failed supplementary source remains retryable', async () => {
+  const partial = await lookupChinese('學習', { fetchImpl: async url => String(url).includes('/v1/en/')
+    ? new Response('', { status: 503 }) : Response.json(chineseWiki()) });
+  assert.equal(partial.status, 'ok'); assert.equal(partial.cacheable, false);
+  const { fetchImpl } = route({ zh: chineseWiki(), en: englishWiki() });
+  assert.equal((await lookupChinese('學習', { fetchImpl })).cacheable, true);
+  const missingSupplement = await lookupChinese('學習', { fetchImpl: async url => String(url).includes('/v1/en/')
+    ? absent('wiki', '學習') : Response.json(chineseWiki()) });
+  assert.equal(missingSupplement.status, 'ok'); assert.equal(missingSupplement.cacheable, true);
 });

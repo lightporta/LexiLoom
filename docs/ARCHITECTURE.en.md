@@ -41,6 +41,10 @@ Definitions and references remain text. Links accept only HTTPS URLs without cre
 
 All adapters share at most four external requests, including subrequests for combined entries. A slot stays occupied until the bounded JSON response body finishes downloading. Requests have size and time limits; official entries are not persistently cached.
 
+Open-data and demo adapters share identical in-flight lookups and reuse successful normalized entries in a worker-memory LRU. Freshness lasts 60 seconds without renewal on hits, with at most 64 entries and a 4,000,000-byte UTF-8 JSON budget (not an exact heap limit). Keys separate the effective adapter, word, profile, language, region and UI; inactive sources and guidance preferences do not invalidate the body. Each caller receives an independent clone. Errors, absence, transient fallbacks and raw `cacheable:false` results are not cached, including Chinese entries with a temporarily failed subsource. Official bridges and unknown adapters bypass reuse. Expired entries are removed lazily; worker termination clears everything, without storage writes. Aborted queued requests are removed immediately.
+
+The content script waits for catalogs and public settings concurrently. Escape cancels selections that are still waiting before a panel exists, as well as the pending launcher timer. Static imports remain: dynamic `import()` is unsupported in Chrome extension service workers. [Chrome documentation](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/basics)
+
 Settings saves are serialized partial updates. Only supplied fields change, so a delayed popup toggle cannot overwrite a region just saved by another window or resume a paused lookup.
 
 ## Adding a language
@@ -52,6 +56,8 @@ Register a profile and adapter with a speech locale, sources and presentation po
 `multilingual.js` requests `/v1/zh/word/{word}?lang={language}`. It checks the headword, edition and any explicit source-language fields; compact records without those fields rely on the documented API filter. Only Chinese glosses and Chinese example translations are converted to Simplified. Headwords and source-language examples keep their spelling. `preferredMeaningLanguage: 'zh'` keeps Chinese definitions visible in an English UI; speech uses the headword language.
 
 Confirmed missing entries and valid entries lacking Chinese glosses become `not-found` and `translation-unavailable` respectively. Generic HTTP errors do not establish absence. A coverage gap retains dictionary navigation, while missing readings/examples are identified without inventing content or interpreting a citation as an example.
+
+English, Chinese and multilingual WiktApi adapters share exact absence validation, including any edition/URL/language metadata. Malformed JSON and oversized HTTP 200 responses become `unsupported-format`. French and Spanish try lowercase only after confirmed absence of the exact spelling, within the original time budget. Cards retain the selection; `queryWord`, `lemma` and source link identify the actual lowercase match. German case is unchanged.
 
 ## Link directory (links, not fetches)
 

@@ -7,10 +7,14 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-export async function openLocaleHarness(chromium, tag, { blockNetwork = true } = {}) {
+export async function openLocaleHarness(chromium, tag, { blockNetwork = true, extensionPath = join(root, 'extension'), contentPrelude = '' } = {}) {
   const temporary = await mkdtemp(join(tmpdir(), 'lexiloom-locale-'));
   const extension = join(temporary, 'extension');
-  await cp(join(root, 'extension'), extension, { recursive: true });
+  await cp(extensionPath, extension, { recursive: true });
+  if (contentPrelude) {
+    const content = join(extension, 'content.js');
+    await writeFile(content, `${contentPrelude}\n${await readFile(content, 'utf8')}`);
+  }
   const shim = `(() => {
   const read = () => ${JSON.stringify(tag)};
   try { chrome.i18n.getUILanguage = read; }

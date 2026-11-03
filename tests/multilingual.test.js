@@ -237,3 +237,53 @@ test('HTTP 200 invalid JSON and oversized response bodies are format errors, not
     assert.equal(result.error.code, 'unsupported-format');
   }
 });
+
+test('French and Spanish retry lowercase only after confirmed exact-word absence and retain the actual source headword', async () => {
+  for (const [language, word, queryWord] of [['fr', 'Bonjour', 'bonjour'], ['es', 'Niño', 'niño']]) {
+    const calls = [];
+    const result = await lookupMultilingual(word, { language, fetchImpl: async url => {
+      const query = decodeURIComponent(new URL(url).pathname.split('/').at(-1)); calls.push(query);
+      return query === word ? Response.json({ error: true, status: 404, message: `No entries found for ${JSON.stringify(word)}`, url }, { status: 404 })
+        : Response.json(payload(query, language));
+    } });
+    assert.deepEqual(calls, [word, queryWord]);
+    assert.equal(result.status, 'ok'); assert.equal(result.word, word); assert.equal(result.displayWord, word);
+    assert.equal(result.queryWord, queryWord); assert.equal(result.lemma, queryWord);
+    assert.equal(result.source.url, `https://zh.wiktionary.org/wiki/${encodeURIComponent(queryWord)}`);
+    assert.ok(result.pronunciations.every(sound => sound.sourceUrl === result.source.url));
+  }
+});
+
+test('a capitalization fallback never replaces an exact match or rewrites German nouns', async () => {
+  for (const [language, word, success] of [['fr', 'Bonjour', true], ['es', 'Niño', true], ['de', 'Haus', false], ['de', 'Ärger', false]]) {
+    let requests = 0;
+    const result = await lookupMultilingual(word, { language, fetchImpl: async () => {
+      requests++;
+      return success ? Response.json(payload(word, language))
+        : Response.json({ error: true, status: 404, message: `No entries found for ${JSON.stringify(word)}` }, { status: 404 });
+    } });
+    assert.equal(requests, 1); assert.equal(result.status, success ? 'ok' : 'not-found');
+    assert.equal(result.word, word); assert.equal(result.queryWord, undefined);
+  }
+});
+
+test('French source failures and unconfirmed absence never trigger a lowercase lookup', async () => {
+  for (const body of [
+    () => new Response('{}', { status: 404 }),
+    () => Response.json({ error: true, status: 404, message: 'No entries found for "other"' }, { status: 404 }),
+    () => new Response('', { status: 429 }), () => new Response('<html>gateway</html>'),
+    () => { throw new DOMException('Timed out', 'TimeoutError'); }
+  ]) {
+    let requests = 0;
+    const result = await lookupMultilingual('Bonjour', { language: 'fr', fetchImpl: async () => { requests++; return body(); } });
+    assert.equal(requests, 1); assert.equal(result.status, 'error');
+  }
+  let requests = 0;
+  const lowerFailure = await lookupMultilingual('Bonjour', { language: 'fr', fetchImpl: async () => {
+    requests++;
+    return requests === 1 ? Response.json({ error: true, status: 404, message: 'No entries found for "Bonjour"' }, { status: 404 })
+      : new Response('', { status: 503 });
+  } });
+  assert.equal(lowerFailure.word, 'Bonjour'); assert.equal(lowerFailure.queryWord, 'bonjour');
+  assert.equal(lowerFailure.status, 'error'); assert.equal(lowerFailure.error.code, 'upstream');
+});

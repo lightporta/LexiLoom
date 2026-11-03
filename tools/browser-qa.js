@@ -201,7 +201,10 @@ try {
   await page.keyboard.press('Escape');
   const freeFixture = [{meanings:[{partOfSpeech:'noun',definitions:[{definition:'An original fallback dictionary definition.'}]}]}];
   await worker.evaluate(payload => { globalThis.fetch=async (url,init)=>String(url).startsWith('chrome-extension://')?globalThis.__LEXILOOM_QA_FETCH__(url,init):String(url).includes('wiktapi.dev')?new Response('{}',{status:404}):Response.json(payload); }, freeFixture);
-  await page.locator('#serendipity').dblclick(); await waitPanel(); await ready(['serendipity']);
+  // This is a separate outage scenario: use a cold word so the successful
+  // Chinese entry above cannot legitimately satisfy it from the result cache.
+  await page.evaluate(() => { const node=document.createElement('p');node.id='fallback-word';node.textContent='contingency';node.style.width='max-content';document.body.prepend(node); });
+  await page.locator('#fallback-word').dblclick(); await waitPanel(); await ready(['contingency']);
   check('English fallback is labelled with its actual source and visible reason', await panelValue('.card', 'return this.textContent.includes("Free Dictionary") && !this.querySelector(".lookup-notice").hidden'));
   await page.keyboard.press('Escape');
   await options.evaluate(()=>chrome.runtime.sendMessage({type:'SAVE_SETTINGS',settings:{enabled:true,provider:'free'}}));

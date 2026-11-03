@@ -9,6 +9,63 @@ const directory = fileURLToPath(new URL('../test-results/browser-ui/', import.me
 await mkdir(directory, { recursive: true });
 const checks = [];
 
+// Delay these two independent startup boundaries in the copied test extension.
+// DOM events release the gates without exposing test hooks in product files.
+const startupPrelude = `(() => {
+  const root = document.documentElement;
+  const original = globalThis.LexiLoomI18n;
+  const localeGate = new Promise(resolve => document.addEventListener('qa-release-locale', resolve, { once: true }));
+  globalThis.LexiLoomI18n = { ...original, ready: Promise.all([original.ready, localeGate]) };
+  const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+  let settingsReleased = false;
+  const settingsGate = new Promise(resolve => document.addEventListener('qa-release-settings', () => {
+    settingsReleased = true; resolve();
+  }, { once: true }));
+  chrome.runtime.sendMessage = (message, ...args) => {
+    const response = send(message, ...args);
+    if (message.type !== 'GET_SETTINGS' || settingsReleased) return response;
+    root.dataset.qaSettingsStarted = 'true';
+    return Promise.all([response, settingsGate]).then(([value]) => {
+      root.dataset.qaSettingsReturned = 'true'; return value;
+    });
+  };
+})();`;
+
+{
+  const harness = await openLocaleHarness(chromium, 'en-US', { contentPrelude: startupPrelude });
+  try {
+    await harness.page.locator('#serendipity').dblclick();
+    await harness.page.waitForFunction(() => document.documentElement.dataset.qaSettingsStarted === 'true');
+    checks.push('A cold selection starts its settings read while the locale catalog is still pending');
+    await harness.page.keyboard.press('Escape');
+    await harness.page.evaluate(() => {
+      document.dispatchEvent(new Event('qa-release-locale'));
+      document.dispatchEvent(new Event('qa-release-settings'));
+    });
+    await harness.page.waitForFunction(() => document.documentElement.dataset.qaSettingsReturned === 'true');
+    await harness.page.waitForTimeout(250);
+    assert.equal(await harness.panel('.panel'), null);
+    assert.equal(await harness.panel('.launcher'), null);
+    checks.push('Escape cancels a first selection awaiting settings and prevents a late card from reopening');
+
+    await harness.page.locator('#serendipity').dblclick();
+    await harness.waitForPanel('.summary-text', 'return !this.classList.contains("loading")');
+    assert.match(await harness.panel('.word', 'return this.textContent'), /serendipity/);
+    checks.push('A new selection still works after the pending first selection was cancelled');
+    await harness.page.keyboard.press('Escape');
+    await harness.page.evaluate(() => {
+      const range = document.createRange(); range.selectNodeContents(document.querySelector('#serendipity'));
+      const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    });
+    await harness.page.mouse.up();
+    await harness.page.keyboard.press('Escape');
+    await harness.page.waitForTimeout(350);
+    assert.equal(await harness.panel('.launcher'), null);
+    checks.push('Escape also cancels the pending selection-launcher timer');
+    assert.deepEqual(harness.errors, []);
+  } finally { await harness.close(); }
+}
+
 async function fixture(worker) {
   await worker.evaluate(() => {
     const original = globalThis.__LEXILOOM_QA_ORIGINAL_FETCH__;

@@ -212,3 +212,154 @@ test('the entry boundary preserves validated non-BMP headwords without splitting
   assert.deepEqual(entry.queryWords, [word]);
   assert.equal(entry.word.isWellFormed(), true);
 });
+
+test('same-source concurrent lookups share one request and successful repeats use independent memory snapshots', async () => {
+  let calls = 0, complete;
+  const adapter = async () => {
+    calls++;
+    await new Promise(resolve => { complete = resolve; });
+    return original('An original cached definition.');
+  };
+  const engine = createDictionaryEngine({ adapters: { free: adapter } });
+  const lookups = Array.from({ length: 8 }, () => engine.lookup('APPLE', { uiLanguage: 'en-US' }));
+  assert.equal(calls, 1, 'eight simultaneous selections need one adapter operation');
+  complete();
+  const results = await Promise.all(lookups);
+  results[0].meanings[0].definitions[0].definition = 'A caller changed its own entry.';
+  assert.equal(results[1].meanings[0].definitions[0].definition, 'An original cached definition.');
+  const repeated = await engine.lookup('apple', { uiLanguage: 'en-US' });
+  assert.equal(repeated.meanings[0].definitions[0].definition, 'An original cached definition.');
+  assert.equal(calls, 1, 'a warm selection does not issue another adapter operation');
+  assert.equal((await engine.lookup('apple', { uiLanguage: 'en-US', settings: { enabled: false } })).error.code, 'disabled');
+});
+
+test('cache identity follows effective language, source, UI and region rather than navigation preferences', async () => {
+  const seen = [];
+  const adapter = async (word, context) => {
+    seen.push([word, context.adapterId, context.language, context.region, context.uiLanguage]);
+    return original('An original source-specific definition.');
+  };
+  const engine = createDictionaryEngine({ adapters: { free: adapter, demo: adapter, wiktionary: adapter, chinese: adapter, multilingual: adapter } });
+  await engine.lookup('apple', { uiLanguage: 'en-US', settings: { englishProvider: 'free' } });
+  await engine.lookup('apple', { uiLanguage: 'en-US', settings: { englishProvider: 'free', provider: 'wiktionary', guidanceDisabled: ['en-wiktionary'] } });
+  assert.equal(seen.length, 1, 'inactive dictionary and navigation changes reuse the same body');
+  await engine.lookup('apple', { uiLanguage: 'en-US', settings: { englishProvider: 'demo' } });
+  await engine.lookup('apple', { uiLanguage: 'zh-CN', settings: { provider: 'wiktionary' } });
+  await engine.lookup('你好', { uiLanguage: 'zh-CN', settings: { chineseRegion: 'CN' } });
+  await engine.lookup('你好', { uiLanguage: 'zh-CN', settings: { chineseRegion: 'HK' } });
+  await engine.lookup('Gift', { uiLanguage: 'en-US', settings: { targetLanguage: 'de' } });
+  await engine.lookup('Gift', { uiLanguage: 'en-US', settings: { targetLanguage: 'fr' } });
+  await engine.lookup('gift', { uiLanguage: 'en-US', settings: { targetLanguage: 'de' } });
+  assert.equal(seen.length, 8, 'active source, interface, region, explicit language and foreign case stay isolated');
+  assert.deepEqual(seen.slice(-3).map(value => value.slice(0, 3)), [
+    ['Gift', 'multilingual', 'de'], ['Gift', 'multilingual', 'fr'], ['gift', 'multilingual', 'de']
+  ]);
+});
+
+test('memory cache expires without extending freshness and evicts the least recently used entry', async () => {
+  let clock = 0, calls = 0;
+  const engine = createDictionaryEngine({ now: () => clock, cacheTtlMs: 60, maximumCacheEntries: 2,
+    adapters: { free: async word => { calls++; return original(word); } } });
+  const lookup = word => engine.lookup(word, { uiLanguage: 'en-US' });
+  await lookup('apple');
+  await lookup('pear');
+  clock = 59;
+  await lookup('apple');
+  assert.equal(calls, 2);
+  await lookup('peach');
+  await lookup('pear');
+  assert.equal(calls, 4, 'touching apple made pear the first eviction');
+  clock = 60;
+  await lookup('apple');
+  assert.equal(calls, 5, 'cache hits do not extend the original expiration');
+  const before = calls;
+  const uncached = createDictionaryEngine({ maximumCacheBytes: 1, adapters: { free: async () => { calls++; return original('Larger than a one-byte cache.'); } } });
+  await uncached.lookup('apple', { uiLanguage: 'en-US' });
+  await uncached.lookup('apple', { uiLanguage: 'en-US' });
+  assert.equal(calls, before + 2, 'an oversized entry is served without being retained');
+});
+
+test('cache byte budget evicts entries and zero limits disable completed-result reuse', async () => {
+  let calls = 0;
+  const adapter = async word => { calls++; return original(word); };
+  const sample = await createDictionaryEngine({ adapters: { free: adapter } }).lookup('apple', { uiLanguage: 'en-US' });
+  const bytes = new TextEncoder().encode(JSON.stringify(sample)).byteLength;
+  const engine = createDictionaryEngine({ maximumCacheBytes: bytes + 20, adapters: { free: adapter } });
+  const lookup = word => engine.lookup(word, { uiLanguage: 'en-US' });
+  await lookup('apple'); await lookup('pear'); await lookup('apple');
+  assert.equal(calls, 4, 'the total byte cap allows only one of these entries');
+  for (const limits of [{ cacheTtlMs: 0 }, { maximumCacheEntries: 0 }, { maximumCacheBytes: 0 }]) {
+    const uncached = createDictionaryEngine({ ...limits, adapters: { free: adapter } });
+    const before = calls;
+    await uncached.lookup('apple', { uiLanguage: 'en-US' });
+    await uncached.lookup('apple', { uiLanguage: 'en-US' });
+    assert.equal(calls, before + 2);
+  }
+});
+
+test('errors, absent words, transient fallback and adapter-marked partial results retry on the next lookup', async () => {
+  const cases = [
+    { status: 'error', error: { code: 'timeout', message: 'Original fixture timeout.' } },
+    { status: 'not-found' },
+    { status: 'ok', meanings: [] },
+    { ...original('An English fallback.'), noticeKey: 'noticeWiktDown' },
+    { ...original('A partial Chinese result.'), cacheable: false }
+  ];
+  for (const raw of cases) {
+    let calls = 0;
+    const engine = createDictionaryEngine({ adapters: { free: async () => { calls++; return raw; } } });
+    await engine.lookup('apple', { uiLanguage: 'en-US' });
+    await engine.lookup('apple', { uiLanguage: 'en-US' });
+    assert.equal(calls, 2);
+  }
+  let calls = 0;
+  const withMissingField = createDictionaryEngine({ adapters: { free: async () => {
+    calls++; return { ...original('A valid entry without a recording.'), noticeKey: 'noticeRecordingMissing', notice: 'The dictionary has no recording.' };
+  } } });
+  await withMissingField.lookup('apple', { uiLanguage: 'en-US' });
+  await withMissingField.lookup('apple', { uiLanguage: 'en-US' });
+  assert.equal(calls, 1, 'a source with genuinely missing examples/readings is still a valid cached entry');
+});
+
+test('official bridges and unrecognized future adapters are neither cached nor coalesced', async () => {
+  for (const provider of ['oxford', 'cambridge']) {
+    let calls = 0;
+    const engine = createDictionaryEngine({ adapters: { [provider]: async () => { calls++; await Promise.resolve(); return original('An official response.'); } } });
+    const settings = { englishProvider: provider, bridgeToken: 'first-private-token' };
+    await Promise.all(Array.from({ length: 4 }, () => engine.lookup('apple', { uiLanguage: 'en-US', settings })));
+    await engine.lookup('apple', { uiLanguage: 'en-US', settings: { ...settings, bridgeToken: 'second-private-token' } });
+    assert.equal(calls, 5);
+  }
+  const extended = createLanguageRegistry([...DEFAULT_PROFILES, { id: 'zz', language: 'zz', matches: value => value === 'δοκιμή', normalize: value => value, adapter: 'future', segment: 'whole' }]);
+  let calls = 0;
+  const engine = createDictionaryEngine({ registry: extended, adapters: { future: async () => { calls++; return original('A future source.'); } } });
+  await Promise.all([engine.lookup('δοκιμή'), engine.lookup('δοκιμή')]);
+  await engine.lookup('δοκιμή');
+  assert.equal(calls, 3, 'a new source needs an explicit cache/licensing decision');
+});
+
+test('aborting a queued fetch rejects immediately without waiting for a slow body or consuming a later slot', async () => {
+  let release, calls = 0;
+  const limited = createLimitedFetch(async () => {
+    calls++;
+    if (calls === 1) await new Promise(resolve => { release = resolve; });
+    return Response.json({ ok: true });
+  }, 1);
+  const first = limited('https://example.org/slow');
+  const queued = new AbortController();
+  const second = limited('https://example.org/cancelled', { signal: queued.signal });
+  const rejected = assert.rejects(second, { name: 'AbortError' });
+  queued.abort();
+  await rejected;
+  assert.equal(calls, 1, 'queued cancellation must finish while the active request is still pending');
+  const third = limited('https://example.org/next');
+  release();
+  await Promise.all([first, third]);
+  assert.equal(calls, 2, 'the cancelled entry must never reach fetch');
+  const alreadyAborted = new AbortController(); alreadyAborted.abort();
+  await assert.rejects(limited(new Request('https://example.org/request', { signal: alreadyAborted.signal })), { name: 'AbortError' });
+  await assert.rejects(limited(new Request('https://example.org/request', { signal: alreadyAborted.signal }), { signal: undefined }), { name: 'AbortError' });
+  assert.equal(calls, 2);
+  await limited(new Request('https://example.org/request', { signal: alreadyAborted.signal }), { signal: null });
+  assert.equal(calls, 3, 'an explicit null signal overrides the Request signal, matching fetch');
+});

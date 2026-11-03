@@ -1,7 +1,7 @@
 // Chinese lookup combines independently attributed corpora. Script conversion
 // changes spelling for display/search; it never invents regional pronunciations.
 import { Converter, Locale } from './chinese-data/opencc.js';
-import { readJsonLimited, safeHttps } from './providers.js';
+import { confirmedWiktionaryMissing, isResponseFormatError, readJsonLimited, safeHttps } from './providers.js';
 
 const chineseWord = /^[\p{Unified_Ideograph}\u3007]+$/u;
 const list = value => Array.isArray(value) ? value : [];
@@ -255,7 +255,7 @@ async function retrieve(url, kind, { fetchImpl, timeoutMs, expectedEdition, expe
       if (response.status === 404) {
         let payload; try { payload = await readJsonLimited(response); } catch { /* Unknown 404 is not proof of a missing word. */ }
         const absent = kind === 'moe' ? payload?.error === 'Not Found' && /^找不到詞彙/.test(payload?.message || '')
-          : payload?.error === true && payload?.status === 404 && /^No entries found for /i.test(payload?.message || '');
+          : confirmedWiktionaryMissing(payload, { word: expectedWord, edition: expectedEdition, language: 'zh' });
         return { status: absent ? 'not-found' : 'error', code: 'upstream' };
       }
       if (!response.ok) return { status: 'error', code: response.status === 429 ? 'rate-limit' : 'upstream' };
@@ -265,7 +265,8 @@ async function retrieve(url, kind, { fetchImpl, timeoutMs, expectedEdition, expe
         : Array.isArray(payload?.entries) && (payload.edition === undefined || payload.edition === expectedEdition)
           && (payload.word === undefined || payload.word === expectedWord);
       return supported ? { status: 'ok', payload } : { status: 'error', code: 'unsupported-format' };
-    } catch (error) { return { status: 'error', code: ['TimeoutError', 'AbortError'].includes(error?.name) ? 'timeout' : 'network' }; }
+    } catch (error) { return { status: 'error', code: isResponseFormatError(error) ? 'unsupported-format'
+      : ['TimeoutError', 'AbortError'].includes(error?.name) ? 'timeout' : 'network' }; }
   });
 }
 
@@ -363,6 +364,9 @@ export async function lookupChinese(value, { region = 'CN', uiLanguage = 'zh-CN'
   })) : pronunciations;
   const result = {
     ...baseResult(word, region, 'ok', source), queryWord, queryWords, meanings, pronunciations: finalPronunciations,
+    // A usable card may still be missing a temporarily failed source. Let a
+    // subsequent lookup retry it instead of caching that partial result.
+    cacheable: !responses.some(response => response.status === 'error'),
     ...(queryWords.length > 1 && originalHasMeaning ? { displayWord: word } : {}),
     phonetic: pronunciations.find(pronunciation => pronunciation.phonetic)?.phonetic || '',
     scriptConversion: { engine: 'OpenCC 1.4.2', appliesTo: 'Wiktionary text and display/search spelling; MOE text is unchanged' },

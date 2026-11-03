@@ -3,8 +3,8 @@
   "languages": {
     "ja": { "word": "学校", "locale": "ja-JP", "phonetic": "/ja-fixture/", "reading": "がっこう", "gloss": "原創日語測試：學校與書本。", "examples": ["学校で学びます。", "学校へ行きます。", "三つ目の例文です。"] },
     "ko": { "word": "안녕", "locale": "ko-KR", "phonetic": "/ko-fixture/", "reading": "annyeong", "gloss": "原創韓語測試：問候與書本。", "examples": ["안녕, 친구야.", "그가 안녕이라고 말했어요.", "세 번째 예문입니다."] },
-    "fr": { "word": "école", "locale": "fr-FR", "phonetic": "/fr-fixture/", "reading": "", "gloss": "原創法語測試：學校與書本。", "examples": ["Une école ouvre ses portes.", "Nous lisons à l'école.", "Voici un troisième exemple."] },
+    "fr": { "word": "école", "capitalizedWord": "Bonjour", "lowercaseWord": "bonjour", "refreshWord": "parole", "locale": "fr-FR", "phonetic": "/fr-fixture/", "reading": "", "gloss": "原創法語測試：學校與書本。", "examples": ["Une école ouvre ses portes.", "Nous lisons à l'école.", "Voici un troisième exemple."] },
     "de": { "word": "Haus", "locale": "de-DE", "phonetic": "/de-fixture/", "reading": "", "gloss": "原創德語測試：房屋與書本。", "examples": ["Das Haus ist hell.", "Wir lesen im Haus.", "Dies ist ein drittes Beispiel."] },
-    "es": { "word": "niño", "locale": "es-ES", "phonetic": "/es-fixture/", "reading": "", "gloss": "原創西語測試：孩子與書本。", "examples": ["El niño lee un libro.", "El niño mira la casa.", "Este es un tercer ejemplo."] }
+    "es": { "word": "niño", "capitalizedWord": "Niño", "lowercaseWord": "niño", "locale": "es-ES", "phonetic": "/es-fixture/", "reading": "", "gloss": "原創西語測試：孩子與書本。", "examples": ["El niño lee un libro.", "El niño mira la casa.", "Este es un tercer ejemplo."] }
   }
 }

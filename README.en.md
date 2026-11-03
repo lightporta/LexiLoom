@@ -41,6 +41,10 @@ Japanese, Korean, French, German and Spanish words use the same cards. Change **
 
 These languages query Chinese Wiktionary. When the corpus has no Chinese definition, reading or example, the card says so; a service failure is never reported as a missing word. For example “こんにちは” currently has no usable Chinese definition, and “学校” has no examples. Switching back to “Automatic · Chinese and English” restores the previous sources and Chinese region. Japanese and Korean words allow up to 32 characters, French, German and Spanish up to 48; sentence translation is not included.
 
+French and Spanish try the exact spelling first, then lowercase only after confirmed absence, covering sentence-initial words such as `Bonjour` and `Niño`. The card keeps the selection and links to the actual matched headword. German case stays unchanged.
+
+Repeated lookups can reuse successful responses still fresh in worker memory (60-second freshness), while simultaneous identical lookups share one request group. Sources, languages, regions and UI are isolated. Nothing is written as lookup history; a stopped worker may need the network again. Errors and temporary source failures are retried on the next lookup. Oxford / Cambridge bypass this reuse. First-time words still depend on the source and network.
+
 Chrome's own pages, the extension store, the built-in PDF viewer, text fields, editors and iframes are not covered yet.
 
 ## Where the words come from
@@ -85,7 +89,7 @@ The directory only generates links. The extension does not fetch or rehost those
 
 ## Development
 
-Node.js 22 or newer. The extension loads on its own and includes OpenCC. The local service and packager need no npm runtime dependencies. Playwright is for the browser tests.
+Node.js 24 LTS is recommended (`.nvmrc`); Node.js 22 remains the minimum. Browser CI uses 24 on all three platforms, with a separate Node 22 compatibility job. The extension loads on its own and includes OpenCC. The local service and packager need no npm runtime dependencies. Playwright is for the browser tests.
 
 ```sh
 npm ci
@@ -104,6 +108,7 @@ npm run test:browser:locales
 npm run test:browser:ui
 npm run test:browser:navigation
 npm run test:browser:multilingual
+npm run test:browser:performance
 ```
 
 For optional real-service verification, run `npm run test:browser:multilingual:live`. It queries five sample words through the installed extension and is kept out of default CI because network and corpus availability can change.

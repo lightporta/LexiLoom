@@ -196,3 +196,32 @@ test('new providers reject invalid words without any network request', async () 
   assert.equal((await lookupSmart('<script>', options)).error.code, 'invalid-word');
   assert.equal(calls, 0);
 });
+
+test('English WiktApi missing responses must identify this exact normalized request', async () => {
+  const missing = { error: true, status: 404, message: 'No entries found for "test"', word: 'test', edition: 'zh',
+    url: 'https://api.wiktapi.dev/v1/zh/word/test?lang=en' };
+  const query = body => lookupWiktionary('Test', { fetchImpl: async () => Response.json(body, { status: 404 }) });
+  assert.equal((await query(missing)).status, 'not-found');
+  for (const metadata of [
+    { message: 'No entries found for "different"' }, { word: 'different' }, { edition: 'en' },
+    { url: 'https://api.wiktapi.dev/v1/zh/word/test?lang=fr' },
+    { url: 'https://api.wiktapi.dev/v1/zh/word/different?lang=en' },
+    { url: 'https://api.wiktapi.dev/v1/en/word/test?lang=en' }
+  ]) {
+    const result = await query({ ...missing, ...metadata });
+    assert.equal(result.status, 'error'); assert.equal(result.error.code, 'upstream');
+  }
+});
+
+test('English providers distinguish malformed and oversized success bodies from connectivity failures', async () => {
+  for (const lookup of [lookupFree, lookupWiktionary]) {
+    for (const fetchImpl of [
+      async () => new Response('<html>gateway</html>'),
+      async () => new Response('{}', { headers: { 'content-length': '1000001' } }),
+      async () => new Response('x'.repeat(1_000_001))
+    ]) {
+      const result = await lookup('test', { fetchImpl });
+      assert.equal(result.status, 'error'); assert.equal(result.error.code, 'unsupported-format');
+    }
+  }
+});

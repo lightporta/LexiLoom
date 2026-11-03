@@ -15,7 +15,7 @@ Chrome 内部页面、Chrome 网上应用店及浏览器内置 PDF 阅读器不�
 
 ## 本地服务和打包
 
-本地词典服务、网页预览和打包需要 Node.js 22 或更高版本。它们仅使用 Node 内置模块，无需先运行 `npm install`。启动脚本不会自动安装依赖，也不会输出 `.env` 内容。
+本地词典服务、网页预览和打包最低需要 Node.js 22，推荐 Node.js 24 LTS（`.nvmrc`）。它们仅使用 Node 内置模块，无需先运行 `npm install`。启动脚本不会自动安装依赖，也不会输出 `.env` 内容。
 
 在项目目录执行以下命令。脚本会根据自身位置寻找项目，因此从其他当前目录启动也可以；移动项目、目录名包含空格均可。
 
@@ -46,9 +46,15 @@ npm run check
 npm run package
 node tools/browser-qa.js
 node tools/browser-locale-qa.js
+npm run test:browser:ui
+npm run test:browser:navigation
+npm run test:browser:multilingual
+npm run test:browser:performance
 ```
 
 [CI 工作流](../.github/workflows/ci.yml) 在 Windows、Linux、macOS 上执行 Node 测试、静态检查、打包及真实 Chromium 扩展自动化。每个平台上传浏览器报告和两种 ZIP，再由汇总任务分别比较加载版和商店版在三个系统的文件名与原始字节。
+
+0.7.0 起三平台主任务与 ZIP 比较使用 Node 24 LTS，另有 Ubuntu Node 22 单测/静态兼容任务。性能检查使用固定合成响应，断言请求复用和错误恢复，不把毫秒计时阈值设为 CI 门槛。这个开发环境更新不会改变已安装扩展使用的 Chrome JavaScript 引擎。
 
 自动化使用 Playwright 下载的 Chromium，通过持久上下文加载扩展；它会实际操作浏览器中的词卡和设置页。官方文档说明该方式支持无界面扩展测试，Chrome/Edge 成品浏览器已移除部分命令行加载扩展参数，因此测试使用 Chromium。[扩展测试说明](https://playwright.dev/docs/chrome-extensions)、[浏览器安装说明](https://playwright.dev/docs/browsers)、[playwright-core CLI 定义](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/package.json)。
 
@@ -56,4 +62,4 @@ CI 默认使用确定性测试词条和响应，浏览器与扩展本身实际�
 
 中文界面的检查不靠 `--lang=zh-CN`。macOS 和 Linux 上这个参数改不了 `chrome.i18n.getUILanguage()`。测试会复制扩展，在内容脚本、设置页和后台里把这个函数换成指定语言，再跑原来的中文词卡检查。`browser-locale-qa.js` 用同一办法分别看简体、香港、台湾和英文界面。Windows 上启动器测试用系统最终路径比较临时目录，避免把同一个目录的 8.3 短名和长路径当成两个目录。
 
-**已核实的远程结果：** 提交 `c5301dd` 的 [CI run 41215903948](https://github.com/lightporta/LexiLoom/actions/runs/41215903948) 已成功完成，三个系统的 Node、静态检查、打包、Chromium 词卡流程和四组界面语言测试，以及原有通用 ZIP 字节比较均通过。这是该提交的验收结果；后续改动（包括新增商店 ZIP 和 UI 回归）需由对应的新 CI 记录证明。界面语言测试注入受控输入，不等于逐一切换真实操作系统语言。Oxford / Cambridge 的授权访问仍需有效凭据，演示与模拟响应不能证明官方接口已联通。
+**已核实的远程结果：** 当前基线 `9fb1748`（0.6.1）的 [CI run 41460427041](https://github.com/lightporta/LexiLoom/actions/runs/41460427041) 在 Windows、Linux、macOS 全部成功，包括五套 Chromium 验收和双 ZIP 字节比较。本轮 0.7.0 尚未推送，新增 Node 24/22 任务及请求效率 QA 的远程结果待推送后确认，本机通过不能代替三平台执行。界面语言测试注入受控输入，不等于逐一切换真实操作系统语言。Oxford / Cambridge 的授权访问仍需有效凭据，演示与模拟响应不能证明官方接口已联通。

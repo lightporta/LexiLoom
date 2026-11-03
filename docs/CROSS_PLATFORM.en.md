@@ -15,7 +15,7 @@ Chrome internal pages, the Chrome Web Store, and the browser's built-in PDF view
 
 ## Local service and packaging
 
-The local dictionary service, page preview, and packager need Node.js 22 or newer. They use only Node built-ins, so `npm install` is not required first. The launchers do not install dependencies and do not print `.env` contents.
+The local dictionary service, page preview, and packager require at least Node.js 22; Node.js 24 LTS is recommended (`.nvmrc`). They use only Node built-ins, so `npm install` is not required first. The launchers do not install dependencies and do not print `.env` contents.
 
 Run the commands below from the project directory. Each script finds the project from its own location, so another working directory is fine, including a path that contains spaces.
 
@@ -46,9 +46,15 @@ npm run check
 npm run package
 node tools/browser-qa.js
 node tools/browser-locale-qa.js
+npm run test:browser:ui
+npm run test:browser:navigation
+npm run test:browser:multilingual
+npm run test:browser:performance
 ```
 
 The [CI workflow](../.github/workflows/ci.yml) runs Node tests, the static check, packaging, and real Chromium extension automation on Windows, Linux, and macOS. Each platform uploads its browser evidence and both ZIP layouts. A later job compares file names and raw bytes separately for each layout across the three systems.
+
+From 0.7.0, the main platform jobs and ZIP comparison use Node 24 LTS, with a separate Ubuntu Node 22 unit/static compatibility job. Performance QA checks request reuse and recovery using synthetic responses, without timing thresholds as a CI gate. Updating this development runtime does not change the Chrome JavaScript engine running the installed extension.
 
 Automation uses the Chromium build Playwright downloads and loads the extension in a persistent context. It actually drives the cards and the settings page. Playwright's documentation describes headless extension testing. Shipping Chrome and Edge have removed some command-line flags for loading extensions, so the tests use Chromium. [Extension testing](https://playwright.dev/docs/chrome-extensions), [browser install](https://playwright.dev/docs/browsers), [playwright-core CLI](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/package.json).
 
@@ -56,4 +62,4 @@ CI uses deterministic test entries and responses by default. The browser and the
 
 The Chinese-interface check does not use `--lang=zh-CN`. On macOS and Linux that flag does not change `chrome.i18n.getUILanguage()`. The test copies the extension and replaces that function in the content script, the settings page and the background, then runs the original Chinese card checks. `browser-locale-qa.js` does the same for Simplified Chinese, Hong Kong, Taiwan and English. On Windows, the launcher test compares a temporary directory by the operating system's final path, so an 8.3 short name and the long path of the same directory count as one directory.
 
-**Verified remote result:** [CI run 41215903948](https://github.com/lightporta/LexiLoom/actions/runs/41215903948) succeeded for commit `c5301dd`. Node tests, static checks, packaging, Chromium card interactions and four controlled UI-locale checks passed on all three systems, along with the original universal ZIP comparison. This evidence belongs to that commit. Later changes, including the new store-layout ZIP and UI regressions, require their own CI run. Language checks inject controlled language inputs; they do not switch the operating system's native UI language. Oxford / Cambridge connectivity still requires valid credentials and is not proved by demo or fixture responses.
+**Verified remote result:** Baseline `9fb1748` (0.6.1) passed [CI run 41460427041](https://github.com/lightporta/LexiLoom/actions/runs/41460427041) on Windows, Linux and macOS, including all five Chromium suites and byte comparison of both ZIP layouts. Version 0.7.0 has not been pushed; its Node 24/22 jobs and efficiency QA still need their own remote run. Local success is not a three-platform run. Language checks inject controlled inputs instead of changing the native OS UI language. Oxford / Cambridge connectivity still requires valid credentials and is not proved by demo or fixture responses.

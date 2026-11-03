@@ -41,6 +41,10 @@ Chrome 140 或更新版本。Windows、macOS、Linux 用同一份扩展，不用
 
 这些语言使用中文维基词典。词库没提供中文义项、读音或例句时会写明；接口故障也不会当成“无法找到单词”。例如当前“こんにちは”尚无可用中文义项，“学校”没有例句。切回“自动 · 中文和英文”会恢复原来的词源和中文地区设置。日、韩单词限 32 字符，法、德、西语限 48 字符；现在还不做整句翻译。
 
+法语和西语先查原词；确认无词后会尝试小写，补上 `Bonjour`、`Niño` 这类句首大写。卡片保留选中的词，出处指向实际查到的词头。德语保留大小写。
+
+重复查词会复用后台中仍有效的成功结果（有效期 60 秒）；同时查询同一个词只发一组请求。缓存按词源、语言、地区和界面隔离，仅在内存中，不保存查词历史；后台休眠后可能重新联网。错误或临时词源故障会在下一次查询时重试。Oxford / Cambridge 不参与这项复用。首次查询新词仍取决于词源和网络速度。
+
 Chrome 自己的页面、扩展商店、内置 PDF、输入框、编辑器，以及网页里的 iframe，目前查不了。
 
 ## 词从哪来
@@ -81,7 +85,7 @@ Chrome 自己的页面、扩展商店、内置 PDF、输入框、编辑器，以
 
 ## 开发
 
-Node.js 22 以上。扩展可以直接加载，OpenCC 已经放在包里；本地服务和打包工具不用另装 npm 运行依赖。Playwright 只在跑浏览器测试时用。
+推荐 Node.js 24 LTS（`.nvmrc`），最低支持 Node.js 22。三平台浏览器 CI 使用 24，另有 22 兼容性检查。扩展可以直接加载，OpenCC 已经放在包里；本地服务和打包工具不用另装 npm 运行依赖。Playwright 只在跑浏览器测试时用。
 
 ```sh
 npm ci
@@ -100,6 +104,7 @@ npm run test:browser:locales
 npm run test:browser:ui
 npm run test:browser:navigation
 npm run test:browser:multilingual
+npm run test:browser:performance
 ```
 
 可选的真实在线验收：`npm run test:browser:multilingual:live`。它会实际向词源查询五个样本词，不放进默认 CI；网络或词库变化可能影响结果。

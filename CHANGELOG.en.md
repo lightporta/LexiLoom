@@ -2,6 +2,16 @@
 
 [中文](CHANGELOG.md)
 
+## 0.7.0 · 2026-11-03
+
+- Added bounded worker-memory LRU reuse with 60-second freshness and identical in-flight lookup sharing for open-data/demo adapters. Sources, languages, regions and UI remain isolated. Errors and temporary partial results retry; official bridges bypass reuse.
+- Aborted queued requests leave immediately. First selections read settings and load catalogs concurrently.
+- Fixed Escape failing to cancel selections before the first card or launcher appeared.
+- French/Spanish retry lowercase only after confirmed absence, covering `Bonjour` / `Niño` while retaining the selection and actual source. German case is unchanged.
+- Unified strict WiktApi absence validation and classified malformed/oversized English and Chinese responses as format errors.
+- Moved primary development/browser CI to Node 24 LTS, retaining Node 22 compatibility checks. Verified Playwright 1.64.1 and vendored OpenCC 1.4.2 remain current; no runtime dependency was added.
+- Added Chromium request-efficiency checks and a baseline comparison. Independent cold words keep outage and delayed-response QA meaningful with caching enabled. See [validation](docs/VALIDATION.md) and the [audit](docs/AUDIT-0.7.0.md).
+
 ## 0.6.1 · 2026-11-02
 
 - Fixed the duplicated brand in the English reading room (“LexiLoom LexiLoom”): the reading-page brand node now carries the `brand-cn` class that the existing English removal logic targets.

@@ -1,0 +1,132 @@
+{
+  "version": "0.7.0",
+  "checkedAt": "2026-11-03T15:04:11.572Z",
+  "node": "v24.16.0",
+  "platform": "darwin",
+  "mode": "native Node fetch; live public dictionary APIs; original adapters; request metadata instrumentation only; no response fixtures or substituted responses",
+  "scope": "Six sequential sample lookups for source correctness; single-run latency is not a benchmark or an OS/browser acceptance result.",
+  "cases": [
+    {
+      "language": "en",
+      "word": "apple",
+      "adapter": "wiktionary",
+      "startedAt": "2026-11-03T15:04:11.572Z",
+      "elapsedMs": 1769,
+      "status": "ok",
+      "errorCode": null,
+      "queryWord": null,
+      "sourceURL": "https://zh.wiktionary.org/wiki/apple",
+      "hasDefinition": true,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/apple?lang=en",
+          "httpStatus": 200
+        }
+      ]
+    },
+    {
+      "language": "en",
+      "word": "apple",
+      "adapter": "free",
+      "startedAt": "2026-11-03T15:04:13.341Z",
+      "elapsedMs": 1024,
+      "status": "ok",
+      "errorCode": null,
+      "queryWord": null,
+      "sourceURL": "https://en.wiktionary.org/wiki/apple",
+      "hasDefinition": true,
+      "requests": [
+        {
+          "url": "https://api.dictionaryapi.dev/api/v2/entries/en/apple",
+          "httpStatus": 200
+        }
+      ]
+    },
+    {
+      "language": "zh",
+      "word": "学习",
+      "adapter": "chinese",
+      "startedAt": "2026-11-03T15:04:14.366Z",
+      "elapsedMs": 1744,
+      "status": "ok",
+      "errorCode": null,
+      "queryWord": "學習",
+      "sourceURL": "https://zh.wiktionary.org/wiki/%E5%AD%B8%E7%BF%92",
+      "hasDefinition": true,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/%E5%AD%B8%E7%BF%92?lang=zh",
+          "httpStatus": 200
+        },
+        {
+          "url": "https://api.wiktapi.dev/v1/en/word/%E5%AD%B8%E7%BF%92?lang=zh",
+          "httpStatus": 200
+        }
+      ]
+    },
+    {
+      "language": "fr",
+      "word": "Bonjour",
+      "adapter": "multilingual",
+      "startedAt": "2026-11-03T15:04:16.110Z",
+      "elapsedMs": 581,
+      "status": "ok",
+      "errorCode": null,
+      "queryWord": "bonjour",
+      "sourceURL": "https://zh.wiktionary.org/wiki/bonjour",
+      "hasDefinition": true,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/Bonjour?lang=fr",
+          "httpStatus": 404
+        },
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/bonjour?lang=fr",
+          "httpStatus": 200
+        }
+      ]
+    },
+    {
+      "language": "es",
+      "word": "Niño",
+      "adapter": "multilingual",
+      "startedAt": "2026-11-03T15:04:16.691Z",
+      "elapsedMs": 554,
+      "status": "ok",
+      "errorCode": null,
+      "queryWord": "niño",
+      "sourceURL": "https://zh.wiktionary.org/wiki/ni%C3%B1o",
+      "hasDefinition": true,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/Ni%C3%B1o?lang=es",
+          "httpStatus": 404
+        },
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/ni%C3%B1o?lang=es",
+          "httpStatus": 200
+        }
+      ]
+    },
+    {
+      "language": "de",
+      "word": "Haus",
+      "adapter": "multilingual",
+      "startedAt": "2026-11-03T15:04:17.244Z",
+      "elapsedMs": 248,
+      "status": "ok",
+      "errorCode": null,
+      "queryWord": null,
+      "sourceURL": "https://zh.wiktionary.org/wiki/Haus",
+      "hasDefinition": true,
+      "requests": [
+        {
+          "url": "https://api.wiktapi.dev/v1/zh/word/Haus?lang=de",
+          "httpStatus": 200
+        }
+      ]
+    }
+  ],
+  "completedAt": "2026-11-03T15:04:17.493Z",
+  "status": "passed"
+}

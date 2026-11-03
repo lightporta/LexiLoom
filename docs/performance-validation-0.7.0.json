@@ -1,0 +1,239 @@
+{
+  "version": "0.7.0",
+  "checkedAt": "2026-11-03T15:00:27.262Z",
+  "platform": "darwin",
+  "node": "v24.16.0",
+  "mode": "real Chromium MV3 + Chrome IPC; synthetic 150ms Free Dictionary responses; controlled English UI locale",
+  "checks": [
+    {
+      "name": "baseline: every repeated and concurrent lookup returns the requested entry",
+      "passed": true
+    },
+    {
+      "name": "baseline: shared request limit remains at four",
+      "passed": true
+    },
+    {
+      "name": "baseline: a transient error can recover immediately",
+      "passed": true
+    },
+    {
+      "name": "baseline: cold and repeated webpage selections both show a word card",
+      "passed": true
+    },
+    {
+      "name": "current: every repeated and concurrent lookup returns the requested entry",
+      "passed": true
+    },
+    {
+      "name": "current: shared request limit remains at four",
+      "passed": true
+    },
+    {
+      "name": "six sequential lookups reuse one successful response",
+      "passed": true
+    },
+    {
+      "name": "eight simultaneous lookups share one in-flight request",
+      "passed": true
+    },
+    {
+      "name": "current: a transient error can recover immediately",
+      "passed": true
+    },
+    {
+      "name": "current: cold and repeated webpage selections both show a word card",
+      "passed": true
+    }
+  ],
+  "runs": [
+    {
+      "label": "baseline",
+      "sourceVersion": "0.6.1",
+      "sequential": [
+        {
+          "elapsedMs": 238.5,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 249,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 242.60000000009313,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 252,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 245.79999999981374,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 243.8000000002794,
+          "status": "ok",
+          "word": "latency"
+        }
+      ],
+      "parallel": [
+        {
+          "elapsedMs": 255.20000000018626,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 255.39999999990687,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 255.89999999990687,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 256.1999999997206,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 486.5,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 486.6999999997206,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 487,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 487.1999999997206,
+          "status": "ok",
+          "word": "efficiency"
+        }
+      ],
+      "parallelWallMs": 487.89999999990687,
+      "requests": {
+        "sequential": 6,
+        "parallel": 8,
+        "peak": 4
+      },
+      "cards": [
+        {
+          "elapsedMs": 342.3914169999998
+        },
+        {
+          "elapsedMs": 303.0560419999997
+        }
+      ],
+      "warmMedianMs": 245.79999999981374
+    },
+    {
+      "label": "current",
+      "sourceVersion": "0.7.0",
+      "sequential": [
+        {
+          "elapsedMs": 258.20000000018626,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 1.1999999997206032,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 0.7000000001862645,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 0.6000000000931323,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 0.599999999627471,
+          "status": "ok",
+          "word": "latency"
+        },
+        {
+          "elapsedMs": 0.6000000000931323,
+          "status": "ok",
+          "word": "latency"
+        }
+      ],
+      "parallel": [
+        {
+          "elapsedMs": 252.89999999990687,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 252.89999999990687,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 252.79999999981374,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 252.79999999981374,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 253,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 253.10000000009313,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 253.20000000018626,
+          "status": "ok",
+          "word": "efficiency"
+        },
+        {
+          "elapsedMs": 253.29999999981374,
+          "status": "ok",
+          "word": "efficiency"
+        }
+      ],
+      "parallelWallMs": 253.39999999990687,
+      "requests": {
+        "sequential": 1,
+        "parallel": 1,
+        "peak": 1
+      },
+      "cards": [
+        {
+          "elapsedMs": 305.3372499999996
+        },
+        {
+          "elapsedMs": 28.667499999999563
+        }
+      ],
+      "warmMedianMs": 0.6000000000931323
+    }
+  ],
+  "browser": "156.0.8078.4",
+  "status": "passed"
+}

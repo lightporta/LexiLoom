@@ -13,6 +13,35 @@ export function safeHttps(value) {
   } catch { return ''; }
 }
 
+// A generic HTTP 404 can describe a bad route or a different lookup. Confirm
+// the requested word, dictionary edition and language before showing absence.
+export function confirmedWiktionaryMissing(payload, { word, edition, language }) {
+  if (payload?.error !== true || payload.status !== 404 || typeof payload.message !== 'string'
+    || !payload.message.startsWith('No entries found for ')) return false;
+  if ((payload.word !== undefined && payload.word !== word)
+    || (payload.edition !== undefined && payload.edition !== edition)) return false;
+  if (payload.url !== undefined) {
+    if (typeof payload.url !== 'string') return false;
+    try {
+      const url = new URL(payload.url);
+      const path = /^\/v1\/([^/]+)\/word\/(.+)$/.exec(url.pathname);
+      const requestedLanguage = url.searchParams.getAll('lang');
+      if (url.origin !== 'https://api.wiktapi.dev' || url.username || url.password || url.hash
+        || !path || path[1] !== edition || decodeURIComponent(path[2]) !== word
+        || requestedLanguage.length !== 1 || requestedLanguage[0] !== language) return false;
+    } catch { return false; }
+  }
+  let missingWord = payload.message.slice('No entries found for '.length);
+  if (missingWord.startsWith('"')) {
+    try { missingWord = JSON.parse(missingWord); } catch { return false; }
+  }
+  return missingWord === word;
+}
+
+export function isResponseFormatError(error) {
+  return error?.name === 'SyntaxError' || error?.code === 'response-too-large';
+}
+
 export function validWord(word) {
   return typeof word === 'string' && word.length <= 48 && WORD.test(word);
 }
@@ -197,6 +226,7 @@ export async function lookupFree(word, { fetchImpl = fetch, timeoutMs = 10_000 }
     if (!response.ok) return httpError(word, 'free', response.status);
     return normalizeFree(word, await readJsonLimited(response));
   } catch (error) {
+    if (isResponseFormatError(error)) return providerError(word, 'free', 'unsupported-format', '词典返回的内容格式或大小不符合要求，请打开原词典查看。');
     const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
     return providerError(word, 'free', timeout ? 'timeout' : 'network', timeout ? '词典请求超时，请重试。' : '无法连接词典，请检查网络后重试。');
   }
@@ -209,12 +239,13 @@ export async function lookupWiktionary(word, { fetchImpl = fetch, timeoutMs = 10
     if (response.status === 404) {
       let payload;
       try { payload = await readJsonLimited(response); } catch { /* An unknown 404 may be a service/route failure. */ }
-      if (payload?.error === true && payload?.status === 404 && typeof payload?.message === 'string' && /^No entries found for /i.test(payload.message)) return notFound(word, 'wiktionary');
+      if (confirmedWiktionaryMissing(payload, { word: word.toLowerCase(), edition: 'zh', language: 'en' })) return notFound(word, 'wiktionary');
       return providerError(word, 'wiktionary', 'upstream', '中文词源返回了无法确认的错误，请稍后重试。');
     }
     if (!response.ok) return httpError(word, 'wiktionary', response.status);
     return normalizeWiktionary(word, await readJsonLimited(response));
   } catch (error) {
+    if (isResponseFormatError(error)) return providerError(word, 'wiktionary', 'unsupported-format', '中文词源返回的内容格式或大小不符合要求，请打开原词典查看。');
     const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
     return providerError(word, 'wiktionary', timeout ? 'timeout' : 'network', timeout ? '中文词源请求超时，请重试。' : '无法连接中文词源，请检查网络后重试。');
   }

@@ -13,6 +13,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  minimum-node:
+    name: Minimum supported Node 22
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run check
+
   check:
     name: Node and Chromium / ${{ matrix.os }}
     strategy:
@@ -25,7 +38,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       - name: Install locked QA dependencies
         run: npm ci
@@ -39,6 +52,8 @@ jobs:
         run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-navigation', { recursive:true, force:true });"
       - name: Remove previous multilingual card evidence
         run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-multilingual', { recursive:true, force:true });"
+      - name: Remove previous request-efficiency evidence
+        run: node --input-type=module -e "import { rm } from 'node:fs/promises'; await rm('test-results/browser-performance', { recursive:true, force:true });"
       - name: Node regression tests
         run: npm test
       - name: Check extension and scripts
@@ -61,6 +76,8 @@ jobs:
         run: npm run test:browser:navigation
       - name: Check Japanese, Korean, French, German and Spanish Chinese word cards
         run: npm run test:browser:multilingual
+      - name: Check repeated lookup reuse, in-flight sharing and error recovery
+        run: npm run test:browser:performance
       - name: Upload this platform's universal package
         uses: actions/upload-artifact@v7
         with:
@@ -87,6 +104,7 @@ jobs:
             test-results/browser-ui/**
             test-results/browser-navigation/**
             test-results/browser-multilingual/**
+            test-results/browser-performance/**
           if-no-files-found: warn
           retention-days: 14
 
@@ -97,7 +115,7 @@ jobs:
     steps:
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
       - uses: actions/download-artifact@v8
         with:
           pattern: chrome-*

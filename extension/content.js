@@ -46,6 +46,7 @@
   let settings = normalizeSettings();
   let host, shadow, panel, cardList, footer, count, panelObserver;
   let launcher, launcherSnapshot, selectionTimer;
+  let pendingSelection = 0;
   let anchor = null, anchorRange = null, anchorSide = null, previousFocus = null;
   let session = 0, serial = 0;
   let cards = new Map();
@@ -75,15 +76,20 @@
   }
 
   async function refreshSettings() {
-    await i18n?.ready;
     const version = ++settingsVersion;
+    pendingSelection += 1;
     try {
-      const next = await bridge.settings();
+      // Catalog loading and the settings read are independent. Start both now so
+      // a first gesture does not pay two consecutive worker round trips.
+      const [read] = await Promise.allSettled([bridge.settings(), i18n?.ready]);
+      if (read.status !== "fulfilled") throw read.reason;
+      const next = read.value;
       if (version === settingsVersion) {
         applySettings(next);
         if (!enabled) closePanel();
       }
     } catch { /* LOOKUP reports an invalidated extension context with an actionable error. */ }
+    finally { pendingSelection -= 1; }
     return enabled;
   }
 
@@ -153,6 +159,7 @@
     launcher?.remove();
     launcher = launcherSnapshot = null;
     clearTimeout(selectionTimer);
+    selectionTimer = null;
   }
 
   function captureSelection() {
@@ -612,6 +619,7 @@
     if (!raw) { hideLauncher(); return; }
     const selectionSession = session;
     selectionTimer = setTimeout(async () => {
+      selectionTimer = null;
       await refreshSettings();
       const selection = snapshot(raw);
       if (selection && enabled && selectionSession === session && window.getSelection()?.toString() === raw.text) showLauncher(selection);
@@ -626,7 +634,7 @@
   }, true);
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && (panel || launcher)) { closePanel(true); event.preventDefault(); }
+    if (event.key === "Escape" && (panel || launcher || selectionTimer || pendingSelection)) { closePanel(true); event.preventDefault(); }
   }, true);
   window.addEventListener("resize", () => { hideLauncher(); positionPanel(); }, { passive: true });
   window.addEventListener("scroll", () => { hideLauncher(); positionPanel(); }, { passive: true, capture: true });

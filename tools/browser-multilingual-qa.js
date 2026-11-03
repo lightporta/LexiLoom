@@ -37,6 +37,7 @@ async function fixture(worker) {
       }
       const current = data[language];
       if (!current) throw new Error('Unexpected source language in multilingual fixture');
+      if (word === current.capitalizedWord) return Response.json({ error: true, status: 404, message: `No entries found for ${word}` }, { status: 404 });
       if (state.mode === 'missing') return Response.json({ error: true, status: 404, message: `No entries found for ${word}` }, { status: 404 });
       if (state.mode === 'failure') return Response.json({ error: 'fixture unavailable' }, { status: 503 });
       const chinese = state.mode !== 'no-Chinese';
@@ -137,6 +138,25 @@ for (const tag of ['zh-CN', 'en-US']) {
     }
 
     if (tag === 'zh-CN') {
+      for (const language of ['fr', 'es']) {
+        const data = fixtures[language];
+        await save(harness, { targetLanguage: language });
+        const start = await harness.worker.evaluate(() => globalThis.__MULTILINGUAL_QA__.requests.length);
+        await select(harness, data.capitalizedWord);
+        await terminal(harness, [data.capitalizedWord]);
+        await expand(harness);
+        const requests = await harness.worker.evaluate(({ start, language, words }) => globalThis.__MULTILINGUAL_QA__.requests.slice(start)
+          .filter(request => request.language === language && words.includes(request.word)).map(request => request.word),
+        { start, language, words: [data.capitalizedWord, data.lowercaseWord] });
+        check(`${language} capitalized lookup retries the lowercase headword only after confirmed absence`,
+          JSON.stringify(requests) === JSON.stringify([data.capitalizedWord, data.lowercaseWord]));
+        const view = await harness.panel('.card', `return {word:this.querySelector('.word').textContent,
+          summary:this.querySelector('.summary-text').textContent,source:this.querySelector('.entry-footer .source-link')?.href}`);
+        check(`${language} lowercase fallback retains the selected spelling and links to the actual lowercase source`,
+          view.word === data.capitalizedWord && view.summary.includes('原创')
+          && view.source === `https://zh.wiktionary.org/wiki/${encodeURIComponent(data.lowercaseWord)}`);
+      }
+
       await save(harness, { targetLanguage: 'ja' });
       await harness.page.keyboard.press('Escape');
       const node = await wordNode(harness, '学校 こんにちは');
@@ -163,6 +183,12 @@ for (const tag of ['zh-CN', 'en-US']) {
       check('A late response from the old source language cannot overwrite the new card', (await harness.panel('.summary-text', 'return this.textContent')).includes('德语测试'));
       await mode(harness, 'ok');
 
+      // A second delay scenario needs a headword that has never been queried in
+      // French. Reusing chat would correctly hit the new warm-result cache and
+      // conceal the pending-language UI boundary we need to exercise here.
+      const refreshWord = fixtures.fr.refreshWord;
+      await select(harness, refreshWord);
+      await terminal(harness, [refreshWord]);
       await expand(harness);
       await harness.panel('.panel', 'this.__qaLanguageRefreshPanel=true');
       await mode(harness, 'late-French');
@@ -172,7 +198,7 @@ for (const tag of ['zh-CN', 'en-US']) {
         oldSpeech:!!this.querySelector('.pronunciation'),oldExamples:!!this.querySelector('.example'),phonetic:this.querySelector('.phonetic').textContent}`);
       check('A pending language change removes old pronunciation controls, examples and phonetic text', loading.busy && !loading.oldSpeech && !loading.oldExamples && loading.phonetic === '');
       await harness.worker.evaluate(() => globalThis.__MULTILINGUAL_QA__.releaseFrench());
-      await terminal(harness, ['chat']);
+      await terminal(harness, [refreshWord]);
       check('The refreshed language preserves the same expanded panel and replaces its definition',
         await harness.panel('.panel', 'return this.__qaLanguageRefreshPanel===true && this.querySelector(".summary").getAttribute("aria-expanded")==="true" && this.querySelector(".summary-text").textContent.includes("法语测试") && this.querySelectorAll(".example").length===2'));
       await mode(harness, 'ok');

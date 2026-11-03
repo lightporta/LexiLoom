@@ -1,7 +1,7 @@
 // Chinese Wiktionary definitions for an explicitly selected headword language.
 // Edition controls the gloss language; ?lang controls the word language.
 // https://wiktapi.dev/concepts/editions
-import { readJsonLimited, safeHttps } from './providers.js';
+import { confirmedWiktionaryMissing, isResponseFormatError, readJsonLimited, safeHttps } from './providers.js';
 import { convertChineseText } from './chinese.js';
 
 const languages = Object.freeze({
@@ -46,29 +46,6 @@ function base(word, language, status) {
 
 function failure(word, language, code, message) {
   return { ...base(word, language, 'error'), error: { code, message } };
-}
-
-function confirmedMissing(payload, word, language) {
-  if (payload?.error !== true || payload.status !== 404 || typeof payload.message !== 'string'
-    || !payload.message.startsWith('No entries found for ')) return false;
-  if ((payload.word !== undefined && payload.word !== word)
-    || (payload.edition !== undefined && payload.edition !== 'zh')) return false;
-  if (payload.url !== undefined) {
-    if (typeof payload.url !== 'string') return false;
-    try {
-      const url = new URL(payload.url);
-      const path = /^\/v1\/zh\/word\/(.+)$/.exec(url.pathname);
-      const requestedLanguage = url.searchParams.getAll('lang');
-      if (url.origin !== 'https://api.wiktapi.dev' || url.username || url.password || url.hash
-        || !path || decodeURIComponent(path[1]) !== word
-        || requestedLanguage.length !== 1 || requestedLanguage[0] !== language) return false;
-    } catch { return false; }
-  }
-  let missingWord = payload.message.slice('No entries found for '.length);
-  if (missingWord.startsWith('"')) {
-    try { missingWord = JSON.parse(missingWord); } catch { return false; }
-  }
-  return missingWord === word;
 }
 
 function audioAttribution(sound) {
@@ -181,8 +158,7 @@ export function normalizeMultilingual(word, payload, { language, uiLanguage = 'z
   return output;
 }
 
-export async function lookupMultilingual(word, { language, uiLanguage = 'zh-CN', fetchImpl = fetch, timeoutMs = 10_000 } = {}) {
-  if (!validMultilingualWord(word, language)) return failure('', language || '', 'invalid-word', '请选择当前目标语言支持的单词。');
+async function lookupExact(word, { language, uiLanguage, fetchImpl, timeoutMs }) {
   try {
     const response = await fetchImpl(`https://api.wiktapi.dev/v1/zh/word/${encodeURIComponent(word)}?lang=${language}`, {
       signal: AbortSignal.timeout(timeoutMs), credentials: 'omit', redirect: 'error', headers: { Accept: 'application/json' }
@@ -190,7 +166,7 @@ export async function lookupMultilingual(word, { language, uiLanguage = 'zh-CN',
     if (response.status === 404) {
       let payload;
       try { payload = await readJsonLimited(response); } catch { /* An unknown 404 cannot establish word absence. */ }
-      if (confirmedMissing(payload, word, language)) return base(word, language, 'not-found');
+      if (confirmedWiktionaryMissing(payload, { word, edition: 'zh', language })) return base(word, language, 'not-found');
       return failure(word, language, 'upstream', '词源返回了无法确认的错误，请稍后重试。');
     }
     if (response.status === 401 || response.status === 403) return failure(word, language, 'authentication', '词源访问被拒绝，请稍后重试。');
@@ -198,10 +174,25 @@ export async function lookupMultilingual(word, { language, uiLanguage = 'zh-CN',
     if (!response.ok) return failure(word, language, 'upstream', '词源暂不可用，请稍后重试。');
     return normalizeMultilingual(word, await readJsonLimited(response), { language, uiLanguage });
   } catch (error) {
-    if (error?.name === 'SyntaxError' || error?.code === 'response-too-large') {
+    if (isResponseFormatError(error)) {
       return failure(word, language, 'unsupported-format', '词源返回的内容格式或大小不符合要求，请打开原词典查看。');
     }
     const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
     return failure(word, language, timeout ? 'timeout' : 'network', timeout ? '词源请求超时，请重试。' : '无法连接词源，请检查网络后重试。');
   }
+}
+
+export async function lookupMultilingual(word, { language, uiLanguage = 'zh-CN', fetchImpl = fetch, timeoutMs = 10_000 } = {}) {
+  if (!validMultilingualWord(word, language)) return failure('', language || '', 'invalid-word', '请选择当前目标语言支持的单词。');
+  const options = { language, uiLanguage, fetchImpl, timeoutMs };
+  const started = performance.now();
+  const exact = await lookupExact(word, options);
+  // A French/Spanish sentence often begins with a capitalized common word.
+  // Preserve exact spellings first, and never lowercase German nouns or turn
+  // an unavailable source into a supposed missing headword.
+  if (exact.status !== 'not-found' || !['fr', 'es'].includes(language)) return exact;
+  const queryWord = word.toLocaleLowerCase(language);
+  if (queryWord === word || !validMultilingualWord(queryWord, language)) return exact;
+  const fallback = await lookupExact(queryWord, { ...options, timeoutMs: Math.max(1, Math.ceil(timeoutMs - (performance.now() - started))) });
+  return { ...fallback, word, displayWord: word, queryWord, lemma: queryWord };
 }

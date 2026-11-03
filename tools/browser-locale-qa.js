@@ -53,7 +53,8 @@ async function install(worker, payloads) {
             : href.includes('/v1/zh/') ? payloads.zh
               : null;
       if (!body) {
-        return new Response(JSON.stringify({ error: true, status: 404, message: 'No entries found for missing' }), {
+        const word = decodeURIComponent(new URL(href).pathname.split('/').at(-1));
+        return new Response(JSON.stringify({ error: true, status: 404, message: `No entries found for ${JSON.stringify(word)}` }), {
           status: 404, headers: { 'content-type': 'application/json' }
         });
       }
